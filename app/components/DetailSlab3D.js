@@ -2,7 +2,7 @@
 
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
 function sanitizeText(text) {
@@ -96,16 +96,10 @@ function RoundedSlabGeometry() {
 
 function SlabMesh({ text }) {
   const glyphTexture = useMemo(() => createGlyphTexture(text, 12), [text]);
-  const shadowRef = useRef(null);
 
   return (
-    <group rotation={[-0.58, 0.72, -0.14]} position={[0, 0.02, 0]} scale={0.72}>
-      <mesh ref={shadowRef} rotation={[-Math.PI / 2 + 0.4, 0.15, 0]} position={[0, -1.7, -0.14]}>
-        <circleGeometry args={[1.68, 48]} />
-        <meshBasicMaterial color="#3a4656" transparent opacity={0.18} />
-      </mesh>
-
-      <mesh castShadow receiveShadow>
+    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.72}>
+      <mesh>
         <RoundedSlabGeometry />
         <meshPhysicalMaterial
           color="#6d86ac"
@@ -122,7 +116,7 @@ function SlabMesh({ text }) {
         />
       </mesh>
 
-      <mesh castShadow receiveShadow position={[0, 0, 0.255]}>
+      <mesh position={[0, 0, 0.255]}>
         <planeGeometry args={[2.08, 2.08]} />
         <meshPhysicalMaterial
           color="#5b7088"
@@ -146,11 +140,6 @@ function SlabMesh({ text }) {
           metalness={0.01}
         />
       </mesh>
-
-      <mesh position={[0, 0, -0.22]} receiveShadow>
-        <planeGeometry args={[2.24, 2.24]} />
-        <meshStandardMaterial color="#273342" roughness={1} metalness={0.02} />
-      </mesh>
     </group>
   );
 }
@@ -160,22 +149,13 @@ export default function DetailSlab3D({ text }) {
     <Canvas
       className="detail-canvas"
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0.18, 5.6], fov: 24 }}
+      camera={{ position: [0, 0, 5.8], fov: 22 }}
       gl={{ antialias: true, alpha: true }}
-      shadows
     >
-      <ambientLight intensity={1.12} color="#f7f0e6" />
-      <directionalLight
-        position={[3.2, 3.8, 3.8]}
-        intensity={3.2}
-        color="#fff8ec"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <directionalLight position={[-3.2, -1.8, 1.6]} intensity={0.9} color="#bdd2f0" />
-      <pointLight position={[0.4, 1.8, 2.6]} intensity={0.62} color="#edf5ff" />
-      <pointLight position={[-1.4, 0.2, 2.1]} intensity={0.24} color="#c5d7ef" />
+      <ambientLight intensity={1.18} color="#f7f0e6" />
+      <directionalLight position={[2.8, 3.2, 5.2]} intensity={2.4} color="#fff8ec" />
+      <directionalLight position={[-2.4, -1.2, 3.4]} intensity={0.75} color="#bdd2f0" />
+      <pointLight position={[0.2, 1.2, 3.8]} intensity={0.42} color="#edf5ff" />
 
       <SlabMesh text={text} />
 
@@ -183,11 +163,12 @@ export default function DetailSlab3D({ text }) {
         enablePan={false}
         enableZoom
         enableRotate
-        minDistance={4.4}
+        target={[0, 0, 0.18]}
+        minDistance={4.8}
         maxDistance={7.8}
-        minPolarAngle={0.7}
-        maxPolarAngle={2.15}
-        rotateSpeed={0.7}
+        minPolarAngle={1.2}
+        maxPolarAngle={1.95}
+        rotateSpeed={0.6}
         zoomSpeed={0.8}
       />
     </Canvas>
