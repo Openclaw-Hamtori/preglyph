@@ -313,27 +313,15 @@ time,
   border-radius: 22px;
   border: 1px solid rgba(216, 241, 255, 0.1);
   background:
-    radial-gradient(circle at 20% 18%, rgba(167, 214, 255, 0.05), transparent 20%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(160, 210, 255, 0.025) 0,
-      rgba(160, 210, 255, 0.025) 1px,
-      transparent 1px,
-      transparent 24px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(160, 210, 255, 0.02) 0,
-      rgba(160, 210, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 24px
-    ),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
-    linear-gradient(180deg, rgba(11, 24, 42, 0.985), rgba(6, 13, 24, 0.985));
+    radial-gradient(circle at 18% 16%, rgba(182, 228, 255, 0.1), transparent 22%),
+    radial-gradient(circle at 72% 22%, rgba(156, 176, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    linear-gradient(180deg, rgba(18, 35, 60, 0.97), rgba(9, 18, 34, 0.97));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 -26px 42px rgba(0, 0, 0, 0.22),
-    inset 0 0 0 1px rgba(7, 16, 28, 0.65);
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -24px 40px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 1px rgba(15, 28, 46, 0.55),
+    0 18px 42px rgba(20, 42, 84, 0.16);
 }
 
 .inscription.preview {
@@ -364,10 +352,10 @@ time,
   position: absolute;
   inset: 12px;
   border-radius: 16px;
-  border: 1px solid rgba(185, 224, 255, 0.05);
+  border: 1px solid rgba(206, 234, 255, 0.06);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    inset 0 -14px 24px rgba(0, 0, 0, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 -12px 20px rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }
 
@@ -377,11 +365,12 @@ time,
   display: grid;
   place-items: center;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: rgba(222, 239, 248, 0.9);
+  color: rgba(233, 245, 255, 0.96);
   text-transform: uppercase;
   text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05),
-    0 -1px 0 rgba(0, 0, 0, 0.55);
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 12px rgba(180, 225, 255, 0.08),
+    0 -1px 0 rgba(0, 0, 0, 0.42);
 }
 
 .inscription.preview .cell {
