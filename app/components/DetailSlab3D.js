@@ -23,15 +23,22 @@ function createGlyphTexture(text, size = 9) {
   canvas.width = 1400;
   canvas.height = 1400;
   const ctx = canvas.getContext('2d');
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#537099';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = 'rgba(220, 233, 252, 0.18)';
+  ctx.lineWidth = 12;
+  ctx.strokeRect(92, 92, canvas.width - 184, canvas.height - 184);
 
   const cells = buildMatrix(text, size);
-  const inner = 132;
+  const inner = 168;
   const cellSize = (canvas.width - inner * 2) / size;
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `${Math.floor(cellSize * 0.55)}px "JetBrains Mono", ui-monospace, monospace`;
+  ctx.font = `${Math.floor(cellSize * 0.56)}px "JetBrains Mono", ui-monospace, monospace`;
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -40,14 +47,14 @@ function createGlyphTexture(text, size = 9) {
       const y = inner + row * cellSize + cellSize / 2;
 
       if (char === ' ') {
-        ctx.fillStyle = 'rgba(16,20,28,0.24)';
+        ctx.fillStyle = 'rgba(17,24,34,0.34)';
         ctx.beginPath();
-        ctx.arc(x, y, Math.max(4, cellSize * 0.05), 0, Math.PI * 2);
+        ctx.arc(x, y, Math.max(5, cellSize * 0.06), 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillStyle = 'rgba(221, 234, 252, 0.28)';
         ctx.fillText(char, x, y - cellSize * 0.03);
-        ctx.fillStyle = 'rgba(14,18,24,1)';
+        ctx.fillStyle = '#0f1723';
         ctx.fillText(char, x, y + cellSize * 0.03);
       }
     }
@@ -59,87 +66,25 @@ function createGlyphTexture(text, size = 9) {
   return texture;
 }
 
-function FlatRoundedSlabGeometry() {
-  const geometry = useMemo(() => {
-    const width = 2.44;
-    const height = 2.44;
-    const depth = 0.34;
-    const radius = 0.14;
-    const shape = new THREE.Shape();
-    const x = -width / 2;
-    const y = -height / 2;
-
-    shape.moveTo(x + radius, y);
-    shape.lineTo(x + width - radius, y);
-    shape.quadraticCurveTo(x + width, y, x + width, y + radius);
-    shape.lineTo(x + width, y + height - radius);
-    shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    shape.lineTo(x + radius, y + height);
-    shape.quadraticCurveTo(x, y + height, x, y + height - radius);
-    shape.lineTo(x, y + radius);
-    shape.quadraticCurveTo(x, y, x + radius, y);
-
-    const geom = new THREE.ExtrudeGeometry(shape, {
-      depth,
-      bevelEnabled: true,
-      bevelSegments: 10,
-      steps: 1,
-      bevelSize: 0.022,
-      bevelThickness: 0.022,
-      curveSegments: 24,
-    });
-    geom.center();
-    return geom;
-  }, []);
-
-  return <primitive object={geometry} />;
-}
-
 function SlabMesh({ text }) {
   const glyphTexture = useMemo(() => createGlyphTexture(text, 9), [text]);
+  const materials = useMemo(
+    () =>
+      Array.from({ length: 6 }, () =>
+        new THREE.MeshStandardMaterial({
+          map: glyphTexture,
+          roughness: 0.74,
+          metalness: 0.08,
+          color: '#ffffff',
+        })
+      ),
+    [glyphTexture]
+  );
 
   return (
-    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.76}>
-      <mesh>
-        <FlatRoundedSlabGeometry />
-        <meshPhysicalMaterial
-          color="#455f82"
-          metalness={0.06}
-          roughness={0.36}
-          transmission={0.2}
-          thickness={1.15}
-          ior={1.2}
-          clearcoat={0.52}
-          clearcoatRoughness={0.32}
-          reflectivity={0.28}
-          sheen={0.14}
-          sheenColor="#b8cde6"
-        />
-      </mesh>
-
-      <mesh position={[0, 0, 0.176]}>
-        <planeGeometry args={[2.12, 2.12]} />
-        <meshPhysicalMaterial
-          color="#547198"
-          roughness={0.48}
-          metalness={0.03}
-          transmission={0.04}
-          clearcoat={0.12}
-          clearcoatRoughness={0.7}
-        />
-      </mesh>
-
-      <mesh position={[0, 0, 0.182]}>
-        <planeGeometry args={[1.98, 1.98]} />
-        <meshStandardMaterial
-          map={glyphTexture}
-          alphaMap={glyphTexture}
-          transparent
-          alphaTest={0.02}
-          color="#121822"
-          roughness={0.98}
-          metalness={0.01}
-        />
+    <group rotation={[-0.26, 0.5, -0.08]} position={[0, 0, 0]} scale={0.88}>
+      <mesh material={materials}>
+        <boxGeometry args={[2.18, 2.18, 2.18]} />
       </mesh>
     </group>
   );
@@ -150,13 +95,13 @@ export default function DetailSlab3D({ text }) {
     <Canvas
       className="detail-canvas"
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 5.8], fov: 22 }}
+      camera={{ position: [0, 0, 6.4], fov: 22 }}
       gl={{ antialias: true, alpha: true }}
     >
-      <ambientLight intensity={1.18} color="#f7f0e6" />
-      <directionalLight position={[2.8, 3.2, 5.2]} intensity={2.4} color="#fff8ec" />
-      <directionalLight position={[-2.4, -1.2, 3.4]} intensity={0.75} color="#bdd2f0" />
-      <pointLight position={[0.2, 1.2, 3.8]} intensity={0.42} color="#edf5ff" />
+      <ambientLight intensity={1.22} color="#f2f6fd" />
+      <directionalLight position={[3.2, 3.4, 5.8]} intensity={2.2} color="#ffffff" />
+      <directionalLight position={[-2.8, -1.6, 3.8]} intensity={0.92} color="#c7d9f4" />
+      <pointLight position={[0.2, 1.8, 4.2]} intensity={0.38} color="#edf5ff" />
 
       <SlabMesh text={text} />
 
@@ -164,11 +109,11 @@ export default function DetailSlab3D({ text }) {
         enablePan={false}
         enableZoom
         enableRotate
-        target={[0, 0, 0.18]}
-        minDistance={4.8}
-        maxDistance={7.8}
-        minPolarAngle={1.2}
-        maxPolarAngle={1.95}
+        target={[0, 0, 0]}
+        minDistance={5.2}
+        maxDistance={8.4}
+        minPolarAngle={1.05}
+        maxPolarAngle={2.05}
         rotateSpeed={0.6}
         zoomSpeed={0.8}
       />
