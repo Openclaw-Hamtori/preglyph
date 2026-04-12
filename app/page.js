@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const records = [
   {
@@ -235,152 +235,6 @@ function buildMatrix(text, size = 9) {
   return padded;
 }
 
-function PoneglyphMonolith() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let width = 0;
-    let height = 0;
-    let frameId = 0;
-    let offset = 0;
-
-    const roundedRect = (x, y, w, h, r) => {
-      context.beginPath();
-      context.moveTo(x + r, y);
-      context.arcTo(x + w, y, x + w, y + h, r);
-      context.arcTo(x + w, y + h, x, y + h, r);
-      context.arcTo(x, y + h, x, y, r);
-      context.arcTo(x, y, x + w, y, r);
-      context.closePath();
-    };
-
-    const draw = () => {
-      context.clearRect(0, 0, width, height);
-
-      const bg = context.createRadialGradient(width * 0.5, height * 0.18, 12, width * 0.5, height * 0.5, width * 0.82);
-      bg.addColorStop(0, 'rgba(126, 210, 255, 0.18)');
-      bg.addColorStop(0.42, 'rgba(80, 132, 255, 0.08)');
-      bg.addColorStop(1, 'rgba(3, 7, 16, 0)');
-      context.fillStyle = bg;
-      context.fillRect(0, 0, width, height);
-
-      const slabSize = Math.min(width, height) * 0.68;
-      const slabX = width / 2 - slabSize / 2;
-      const slabY = height / 2 - slabSize / 2 + Math.sin(offset * 0.85) * 4;
-      const radius = slabSize * 0.12;
-
-      const slabFill = context.createLinearGradient(slabX, slabY, slabX + slabSize, slabY + slabSize);
-      slabFill.addColorStop(0, 'rgba(18, 42, 78, 0.94)');
-      slabFill.addColorStop(0.45, 'rgba(10, 24, 46, 0.98)');
-      slabFill.addColorStop(1, 'rgba(6, 13, 28, 0.98)');
-      context.fillStyle = slabFill;
-      roundedRect(slabX, slabY, slabSize, slabSize, radius);
-      context.fill();
-
-      context.strokeStyle = 'rgba(176, 226, 255, 0.22)';
-      context.lineWidth = 1.2;
-      roundedRect(slabX, slabY, slabSize, slabSize, radius);
-      context.stroke();
-
-      context.strokeStyle = 'rgba(150, 210, 255, 0.1)';
-      context.lineWidth = 1;
-      roundedRect(slabX + slabSize * 0.045, slabY + slabSize * 0.045, slabSize * 0.91, slabSize * 0.91, radius * 0.8);
-      context.stroke();
-
-      const gridInset = slabSize * 0.16;
-      const cell = (slabSize - gridInset * 2) / 4;
-      context.strokeStyle = 'rgba(160, 215, 255, 0.11)';
-      for (let i = 1; i < 4; i += 1) {
-        const gx = slabX + gridInset + cell * i;
-        const gy = slabY + gridInset + cell * i;
-        context.beginPath();
-        context.moveTo(gx, slabY + gridInset);
-        context.lineTo(gx, slabY + slabSize - gridInset);
-        context.stroke();
-        context.beginPath();
-        context.moveTo(slabX + gridInset, gy);
-        context.lineTo(slabX + slabSize - gridInset, gy);
-        context.stroke();
-      }
-
-      context.strokeStyle = 'rgba(184, 233, 255, 0.2)';
-      context.lineWidth = 1.1;
-      const glyphs = [
-        [[0.6, 0.26], [0.4, 0.5], [0.6, 0.74]],
-        [[0.18, 0.22], [0.3, 0.22], [0.3, 0.34], [0.18, 0.34], [0.18, 0.22]],
-        [[0.72, 0.2], [0.8, 0.32], [0.72, 0.44], [0.64, 0.32], [0.72, 0.2]],
-        [[0.2, 0.72], [0.34, 0.58], [0.34, 0.84], [0.2, 0.72]],
-      ];
-
-      glyphs.forEach((points, idx) => {
-        context.beginPath();
-        points.forEach(([px, py], pointIdx) => {
-          const x = slabX + slabSize * px + Math.sin(offset + idx) * 0.6;
-          const y = slabY + slabSize * py + Math.cos(offset * 0.7 + idx) * 0.6;
-          if (pointIdx === 0) context.moveTo(x, y);
-          else context.lineTo(x, y);
-        });
-        context.stroke();
-      });
-
-      const centerGlow = context.createRadialGradient(width * 0.5, height * 0.52, 4, width * 0.5, height * 0.52, slabSize * 0.24);
-      centerGlow.addColorStop(0, 'rgba(234, 247, 255, 0.4)');
-      centerGlow.addColorStop(0.3, 'rgba(117, 191, 255, 0.18)');
-      centerGlow.addColorStop(1, 'rgba(117, 191, 255, 0)');
-      context.fillStyle = centerGlow;
-      context.beginPath();
-      context.arc(width * 0.5, height * 0.52, slabSize * 0.24, 0, Math.PI * 2);
-      context.fill();
-
-      context.strokeStyle = 'rgba(210, 240, 255, 0.16)';
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(slabX + slabSize * 0.27, slabY + slabSize * 0.52);
-      context.lineTo(slabX + slabSize * 0.73, slabY + slabSize * 0.52);
-      context.moveTo(slabX + slabSize * 0.5, slabY + slabSize * 0.29);
-      context.lineTo(slabX + slabSize * 0.5, slabY + slabSize * 0.75);
-      context.stroke();
-    };
-
-    const resize = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      const bounds = parent.getBoundingClientRect();
-      canvas.width = Math.max(1, Math.floor(bounds.width * dpr));
-      canvas.height = Math.max(1, Math.floor(bounds.height * dpr));
-      canvas.style.width = `${bounds.width}px`;
-      canvas.style.height = `${bounds.height}px`;
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.scale(dpr, dpr);
-      width = bounds.width;
-      height = bounds.height;
-      draw();
-    };
-
-    const animate = () => {
-      offset += 0.01;
-      draw();
-      frameId = window.requestAnimationFrame(animate);
-    };
-
-    resize();
-    animate();
-    window.addEventListener('resize', resize);
-    return () => {
-      window.removeEventListener('resize', resize);
-      window.cancelAnimationFrame(frameId);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="glass-canvas" aria-hidden="true" />;
-}
-
 function fakeTxHash(seed) {
   const hex = Array.from(seed)
     .map((char) => char.charCodeAt(0).toString(16).padStart(2, '0'))
@@ -474,12 +328,6 @@ export default function Page() {
       </header>
 
       <main id="top" className="main-layout">
-        <section className="monolith-row" aria-hidden="true">
-          <div className="monolith-wrap glass-panel">
-            <PoneglyphMonolith />
-          </div>
-        </section>
-
         <section className="slab-grid" aria-label="Public record slabs">
           {records.map((record) => (
             <button
