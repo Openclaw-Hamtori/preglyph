@@ -26,10 +26,10 @@ body {
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at 16% 10%, rgba(145, 216, 255, 0.28), transparent 24%),
-    radial-gradient(circle at 82% 16%, rgba(145, 173, 255, 0.24), transparent 22%),
-    radial-gradient(circle at 52% 36%, rgba(188, 229, 255, 0.08), transparent 28%),
-    linear-gradient(180deg, #0b1730 0%, #081120 48%, #060d18 100%);
+    radial-gradient(circle at 16% 10%, rgba(173, 228, 255, 0.34), transparent 24%),
+    radial-gradient(circle at 82% 16%, rgba(166, 188, 255, 0.28), transparent 22%),
+    radial-gradient(circle at 50% 34%, rgba(216, 239, 255, 0.12), transparent 30%),
+    linear-gradient(180deg, #132346 0%, #0d1a34 46%, #091220 100%);
 }
 
 a {
@@ -61,13 +61,13 @@ button {
 .ambient-a {
   top: -8vw;
   left: -8vw;
-  background: radial-gradient(circle, rgba(162, 225, 255, 0.22), rgba(162, 225, 255, 0));
+  background: radial-gradient(circle, rgba(192, 235, 255, 0.28), rgba(192, 235, 255, 0));
 }
 
 .ambient-b {
   top: 18vh;
   right: -10vw;
-  background: radial-gradient(circle, rgba(139, 163, 255, 0.2), rgba(139, 163, 255, 0));
+  background: radial-gradient(circle, rgba(170, 186, 255, 0.24), rgba(170, 186, 255, 0));
 }
 
 .topbar,
@@ -311,17 +311,16 @@ time,
   overflow: hidden;
   display: grid;
   border-radius: 22px;
-  border: 1px solid rgba(216, 241, 255, 0.1);
+  border: 1px solid rgba(222, 242, 255, 0.14);
   background:
-    radial-gradient(circle at 18% 16%, rgba(182, 228, 255, 0.1), transparent 22%),
-    radial-gradient(circle at 72% 22%, rgba(156, 176, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
-    linear-gradient(180deg, rgba(18, 35, 60, 0.97), rgba(9, 18, 34, 0.97));
+    radial-gradient(circle at 18% 14%, rgba(214, 239, 255, 0.16), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(175, 197, 255, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.022)),
+    linear-gradient(180deg, rgba(28, 52, 88, 0.96), rgba(15, 29, 52, 0.95));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 -24px 40px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 1px rgba(15, 28, 46, 0.55),
-    0 18px 42px rgba(20, 42, 84, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 -18px 34px rgba(0, 0, 0, 0.14),
+    0 20px 46px rgba(50, 88, 154, 0.16);
 }
 
 .inscription.preview {
@@ -343,20 +342,12 @@ time,
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 36%, transparent 72%, rgba(255, 255, 255, 0.02));
+  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.05), transparent 34%);
   pointer-events: none;
 }
 
 .inscription::before {
-  content: '';
-  position: absolute;
-  inset: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(206, 234, 255, 0.06);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    inset 0 -12px 20px rgba(0, 0, 0, 0.12);
-  pointer-events: none;
+  content: none;
 }
 
 .cell {
