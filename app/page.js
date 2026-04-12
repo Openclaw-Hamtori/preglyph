@@ -394,7 +394,7 @@ export default function Page() {
                 <strong>{record.author}</strong>
                 <span>{record.time}</span>
               </div>
-              <Inscription text={record.text} size={9} variant="preview" />
+              <Inscription text={record.text} size={6} variant="preview" />
               <div className="slab-meta-bottom">
                 <span>{record.metaLeft}</span>
                 <span>{record.metaRight}</span>
@@ -428,7 +428,7 @@ export default function Page() {
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width">
-                <Inscription text={activeRecord.text} size={20} variant="detail" />
+                <Inscription text={activeRecord.text} size={12} variant="detail" />
               </div>
               <div className="detail-copy">
                 <p>{activeRecord.text}</p>
