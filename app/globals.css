@@ -2,17 +2,13 @@
   --bg: #050b16;
   --bg-deep: #07111f;
   --panel: rgba(14, 28, 52, 0.42);
-  --panel-strong: rgba(12, 24, 44, 0.62);
   --panel-border: rgba(196, 228, 255, 0.16);
   --panel-border-strong: rgba(196, 228, 255, 0.22);
   --text: #eef7ff;
   --muted: rgba(211, 229, 247, 0.72);
-  --blue: #8ad2ff;
-  --blue-2: #74a9ff;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
   --radius-xl: 32px;
   --radius-lg: 24px;
-  --radius-md: 18px;
   --container: 1180px;
 }
 
@@ -52,6 +48,10 @@ a {
   text-decoration: none;
 }
 
+button {
+  font: inherit;
+}
+
 .page-shell {
   position: relative;
   width: min(calc(100% - 40px), var(--container));
@@ -83,7 +83,8 @@ a {
 
 .topbar,
 .glass-panel,
-.inscription {
+.inscription,
+.slab-button {
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
 }
@@ -149,12 +150,14 @@ a {
 }
 
 .nav a,
-.record-head span,
-.record-foot,
 .info-card p,
 .eyebrow,
 time,
-.record-copy p {
+.slab-meta-top span,
+.slab-meta-bottom,
+.detail-author span,
+.detail-copy p,
+.detail-meta {
   color: var(--muted);
 }
 
@@ -172,7 +175,8 @@ time,
   padding-top: 28px;
 }
 
-.glass-panel {
+.glass-panel,
+.slab-button {
   border: 1px solid var(--panel-border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
@@ -198,8 +202,8 @@ time,
 }
 
 .hero-copy h1,
-.record-copy h2,
-.info-card h3 {
+.info-card h3,
+.detail-head h2 {
   margin: 0;
   letter-spacing: -0.05em;
 }
@@ -246,71 +250,63 @@ time,
   display: block;
 }
 
-.records-grid {
+.slab-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-top: 18px;
 }
 
-.record-card {
-  padding: 20px;
+.slab-button {
+  appearance: none;
+  width: 100%;
+  padding: 14px;
   border-radius: var(--radius-lg);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-.record-head,
-.record-foot,
-.record-body,
-.bottom-grid {
+.slab-button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216, 241, 255, 0.26);
+}
+
+.slab-meta-top,
+.slab-meta-bottom,
+.detail-head,
+.detail-body,
+.bottom-grid,
+.detail-meta {
   display: flex;
 }
 
-.record-head,
-.record-foot {
-  align-items: flex-start;
+.slab-meta-top,
+.slab-meta-bottom {
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px;
 }
 
-.record-head {
-  margin-bottom: 16px;
+.slab-meta-top {
+  margin-bottom: 10px;
 }
 
-.record-head strong {
-  display: block;
-  font-size: 0.96rem;
+.slab-meta-top strong {
+  font-size: 0.92rem;
 }
 
-.record-head span,
-.record-foot,
-time {
-  font-size: 0.82rem;
+.slab-meta-top span,
+.slab-meta-bottom {
+  font-size: 0.78rem;
 }
 
-.record-body {
-  align-items: stretch;
-  gap: 18px;
-}
-
-.record-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.record-copy h2 {
-  font-size: 1.38rem;
-  line-height: 1.05;
-}
-
-.record-copy p {
-  margin: 14px 0 0;
-  line-height: 1.72;
-  font-size: 0.94rem;
+.slab-meta-bottom {
+  margin-top: 10px;
 }
 
 .inscription {
-  width: 184px;
-  flex: 0 0 184px;
+  width: 100%;
   aspect-ratio: 1 / 1;
   position: relative;
   overflow: hidden;
@@ -362,10 +358,6 @@ time {
   color: transparent;
 }
 
-.record-foot {
-  margin-top: 16px;
-}
-
 .bottom-grid {
   gap: 16px;
   margin-top: 18px;
@@ -386,9 +378,89 @@ time {
   flex: 0.75;
 }
 
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.detail-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 8, 20, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.detail-panel {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 100%);
+  padding: 22px;
+  border-radius: 30px;
+}
+
+.detail-close {
+  appearance: none;
+  margin-left: auto;
+  display: inline-flex;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.detail-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.detail-head h2 {
+  max-width: 14ch;
+  line-height: 0.98;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+}
+
+.detail-author strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.detail-body {
+  align-items: flex-start;
+  gap: 22px;
+  margin-top: 20px;
+}
+
+.detail-slab-wrap {
+  width: 300px;
+  flex: 0 0 300px;
+}
+
+.detail-copy {
+  flex: 1;
+}
+
+.detail-copy p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.detail-meta {
+  gap: 18px;
+  margin-top: 18px;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 1080px) {
-  .hero-strip,
-  .records-grid,
+  .slab-grid,
   .bottom-grid {
     grid-template-columns: 1fr;
     flex-direction: column;
@@ -413,25 +485,24 @@ time {
   }
 
   .hero-strip,
-  .record-card,
-  .info-card {
+  .info-card,
+  .detail-panel {
     padding: 18px;
   }
 
-  .hero-copy h1 {
-    font-size: 2.9rem;
-  }
-
-  .record-body {
+  .hero-strip,
+  .detail-head,
+  .detail-body {
+    grid-template-columns: 1fr;
     flex-direction: column;
   }
 
-  .inscription {
-    width: 100%;
-    flex-basis: auto;
+  .hero-copy h1 {
+    font-size: 2.6rem;
   }
 
-  .bottom-grid {
-    margin-bottom: 20px;
+  .detail-slab-wrap {
+    width: 100%;
+    flex-basis: auto;
   }
 }
