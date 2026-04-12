@@ -13,12 +13,14 @@ function sanitizeText(text) {
     .toLocaleUpperCase();
 }
 
-function buildMatrix(text, size = 9) {
+const MATRIX_SIZE = 10;
+
+function buildMatrix(text, size = MATRIX_SIZE) {
   const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
   return [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
 }
 
-function createGlyphTexture(text, size = 9, mode = 'base') {
+function createGlyphTexture(text, size = MATRIX_SIZE, mode = 'base') {
   const canvas = document.createElement('canvas');
   canvas.width = 1400;
   canvas.height = 1400;
@@ -28,27 +30,23 @@ function createGlyphTexture(text, size = 9, mode = 'base') {
 
   if (mode === 'base') {
     const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    bgGradient.addColorStop(0, '#495d78');
-    bgGradient.addColorStop(0.54, '#3e5068');
-    bgGradient.addColorStop(1, '#334255');
+    bgGradient.addColorStop(0, '#42556f');
+    bgGradient.addColorStop(0.54, '#37475d');
+    bgGradient.addColorStop(1, '#2b3747');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = 'rgba(202, 216, 238, 0.12)';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(96, 96, canvas.width - 192, canvas.height - 192);
   } else {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   const cells = buildMatrix(text, size);
-  const inner = 168;
+  const inner = 148;
   const cellSize = (canvas.width - inner * 2) / size;
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `${Math.floor(cellSize * 0.56)}px "JetBrains Mono", ui-monospace, monospace`;
+  ctx.font = `${Math.floor(cellSize * 0.66)}px "JetBrains Mono", ui-monospace, monospace`;
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -96,8 +94,8 @@ function createGlyphTexture(text, size = 9, mode = 'base') {
 }
 
 function SlabMesh({ text, interacting = false }) {
-  const glyphTexture = useMemo(() => createGlyphTexture(text, 9, 'base'), [text]);
-  const glowTexture = useMemo(() => createGlyphTexture(text, 9, 'glow'), [text]);
+  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base'), [text]);
+  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow'), [text]);
   const materials = useMemo(
     () =>
       Array.from({ length: 6 }, () =>

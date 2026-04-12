@@ -230,7 +230,9 @@ function sanitizeText(text) {
     .toLocaleUpperCase();
 }
 
-function buildMatrix(text, size = 9) {
+const MATRIX_SIZE = 10;
+
+function buildMatrix(text, size = MATRIX_SIZE) {
   const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
   const padded = [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
   return padded;
@@ -272,12 +274,12 @@ function formatRecordedAt(relative) {
   return relative;
 }
 
-function Inscription({ text, size = 9, variant = 'preview' }) {
+function Inscription({ text, size = MATRIX_SIZE, variant = 'preview' }) {
   const cells = useMemo(() => buildMatrix(text, size), [text, size]);
   const fontSize =
     variant === 'detail'
-      ? `clamp(${Math.max(0.64, 10.4 / size).toFixed(2)}rem, ${Math.max(0.9, 15 / size).toFixed(2)}vw, ${Math.max(0.94, 15.6 / size).toFixed(2)}rem)`
-      : `clamp(${Math.max(0.52, 6 / size).toFixed(2)}rem, ${Math.max(0.7, 8.4 / size).toFixed(2)}vw, ${Math.max(0.82, 8.8 / size).toFixed(2)}rem)`;
+      ? `clamp(${Math.max(0.62, 10.9 / size).toFixed(2)}rem, ${Math.max(0.86, 15.8 / size).toFixed(2)}vw, ${Math.max(0.92, 16.4 / size).toFixed(2)}rem)`
+      : `clamp(${Math.max(0.48, 6.3 / size).toFixed(2)}rem, ${Math.max(0.66, 9 / size).toFixed(2)}vw, ${Math.max(0.76, 9.6 / size).toFixed(2)}rem)`;
 
   return (
     <div
@@ -335,7 +337,7 @@ export default function Page() {
               onClick={() => setActiveRecord(record)}
               aria-label={`Open record by ${record.author}`}
             >
-              <Inscription text={record.text} size={8} variant="preview" />
+              <Inscription text={record.text} size={MATRIX_SIZE} variant="preview" />
             </button>
           ))}
         </section>
