@@ -333,8 +333,8 @@ time,
 }
 
 .inscription.detail {
-  grid-template-columns: repeat(50, minmax(0, 1fr));
-  grid-template-rows: repeat(50, minmax(0, 1fr));
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  grid-template-rows: repeat(20, minmax(0, 1fr));
   padding: 16px;
   aspect-ratio: 1 / 1;
 }
@@ -362,7 +362,7 @@ time,
 }
 
 .inscription.detail .cell {
-  font-size: clamp(0.12rem, 0.16vw, 0.2rem);
+  font-size: clamp(0.34rem, 0.48vw, 0.54rem);
 }
 
 .cell.empty {

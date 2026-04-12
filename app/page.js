@@ -428,7 +428,7 @@ export default function Page() {
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width">
-                <Inscription text={activeRecord.text} size={50} variant="detail" />
+                <Inscription text={activeRecord.text} size={20} variant="detail" />
               </div>
               <div className="detail-copy">
                 <p>{activeRecord.text}</p>
