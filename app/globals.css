@@ -1,12 +1,12 @@
 :root {
-  --bg: #07111f;
-  --bg-deep: #0b1830;
-  --panel: rgba(20, 38, 74, 0.48);
-  --panel-border: rgba(206, 234, 255, 0.22);
-  --panel-border-strong: rgba(206, 234, 255, 0.3);
-  --text: #eef7ff;
-  --muted: rgba(220, 234, 250, 0.8);
-  --shadow: 0 24px 80px rgba(13, 26, 58, 0.24);
+  --bg: #f5f6f8;
+  --bg-deep: #e7eaee;
+  --panel: rgba(255, 255, 255, 0.78);
+  --panel-border: rgba(86, 96, 110, 0.18);
+  --panel-border-strong: rgba(86, 96, 110, 0.28);
+  --text: #2d3138;
+  --muted: rgba(73, 80, 91, 0.72);
+  --shadow: 0 20px 50px rgba(71, 79, 91, 0.12);
   --radius-xl: 32px;
   --radius-lg: 24px;
   --container: 1180px;
@@ -26,10 +26,9 @@ body {
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at 16% 10%, rgba(173, 228, 255, 0.34), transparent 24%),
-    radial-gradient(circle at 82% 16%, rgba(166, 188, 255, 0.28), transparent 22%),
-    radial-gradient(circle at 50% 34%, rgba(216, 239, 255, 0.12), transparent 30%),
-    linear-gradient(180deg, #132346 0%, #0d1a34 46%, #091220 100%);
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.95), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(236, 239, 244, 0.82), transparent 24%),
+    linear-gradient(180deg, #fafbfc 0%, #f2f4f7 44%, #ebeef2 100%);
 }
 
 a {
@@ -61,13 +60,13 @@ button {
 .ambient-a {
   top: -8vw;
   left: -8vw;
-  background: radial-gradient(circle, rgba(192, 235, 255, 0.28), rgba(192, 235, 255, 0));
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
 }
 
 .ambient-b {
   top: 18vh;
   right: -10vw;
-  background: radial-gradient(circle, rgba(170, 186, 255, 0.24), rgba(170, 186, 255, 0));
+  background: radial-gradient(circle, rgba(223, 227, 233, 0.56), rgba(223, 227, 233, 0));
 }
 
 .topbar,
@@ -89,8 +88,8 @@ button {
   padding: 14px 18px;
   border-radius: 999px;
   border: 1px solid var(--panel-border);
-  background: linear-gradient(180deg, rgba(34, 56, 96, 0.58), rgba(16, 31, 58, 0.42));
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(238, 241, 245, 0.88));
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
 .brand {
@@ -103,12 +102,10 @@ button {
   width: 38px;
   height: 38px;
   border-radius: 13px;
-  border: 1px solid rgba(215, 240, 255, 0.18);
+  border: 1px solid rgba(104, 114, 126, 0.18);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04)),
-    radial-gradient(circle at 30% 25%, rgba(145, 220, 255, 0.22), transparent 38%),
-    rgba(15, 28, 52, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(224, 228, 234, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), inset 0 -1px 0 rgba(123, 132, 144, 0.16);
   position: relative;
 }
 
@@ -117,7 +114,7 @@ button {
   content: '';
   position: absolute;
   inset: 8px;
-  border: 1px solid rgba(229, 244, 255, 0.18);
+  border: 1px solid rgba(119, 128, 140, 0.18);
   border-radius: 8px;
 }
 
@@ -311,22 +308,22 @@ time,
   overflow: hidden;
   display: grid;
   border-radius: 14px;
-  border: 1px solid rgba(241, 248, 255, 0.28);
+  border: 1px solid rgba(132, 138, 146, 0.28);
   background:
     repeating-linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.012) 0,
-      rgba(255, 255, 255, 0.012) 1px,
-      rgba(0, 0, 0, 0.018) 1px,
-      rgba(0, 0, 0, 0.018) 3px
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      rgba(0, 0, 0, 0.028) 1px,
+      rgba(0, 0, 0, 0.028) 3px
     ),
-    linear-gradient(180deg, rgba(82, 109, 150, 0.985), rgba(54, 78, 114, 0.985));
+    linear-gradient(180deg, rgba(214, 218, 223, 0.98), rgba(183, 188, 195, 0.98));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.34),
-    inset 0 18px 20px rgba(255, 255, 255, 0.028),
-    inset 0 -24px 32px rgba(0, 0, 0, 0.18),
-    0 14px 28px rgba(26, 42, 69, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(120, 126, 136, 0.35),
+    inset 10px 0 14px rgba(255, 255, 255, 0.08),
+    inset -10px 0 14px rgba(90, 96, 106, 0.08),
+    0 10px 24px rgba(108, 114, 123, 0.12);
 }
 
 .inscription.preview {
@@ -348,7 +345,7 @@ time,
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 28%, rgba(0, 0, 0, 0.05) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 22%, rgba(102, 108, 117, 0.05) 100%);
   pointer-events: none;
 }
 
@@ -357,11 +354,11 @@ time,
   position: absolute;
   inset: 8px;
   border-radius: 10px;
-  border: 1px solid rgba(230, 242, 255, 0.06);
+  border: 1px solid rgba(124, 131, 139, 0.12);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.32),
-    inset 0 0 18px rgba(0, 0, 0, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(116, 122, 132, 0.28),
+    inset 0 0 18px rgba(0, 0, 0, 0.035);
   pointer-events: none;
 }
 
@@ -371,12 +368,12 @@ time,
   display: grid;
   place-items: center;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: rgba(208, 223, 238, 0.72);
+  color: rgba(70, 76, 84, 0.78);
   text-transform: uppercase;
   text-shadow:
-    0 -1px 0 rgba(255, 255, 255, 0.18),
-    0 1px 0 rgba(26, 43, 68, 0.96),
-    0 2px 3px rgba(0, 0, 0, 0.4);
+    0 -1px 0 rgba(255, 255, 255, 0.56),
+    0 1px 0 rgba(126, 132, 141, 0.42),
+    0 2px 2px rgba(83, 89, 97, 0.18);
 }
 
 .inscription.preview .cell {
