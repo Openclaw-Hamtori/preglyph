@@ -51,11 +51,23 @@ function createGlyphTexture(text, size = 9) {
       const y = inner + row * cellSize + cellSize / 2;
 
       if (char === ' ') {
-        ctx.fillStyle = 'rgba(14, 20, 29, 0.42)';
+        ctx.shadowColor = 'rgba(132, 182, 255, 0.24)';
+        ctx.shadowBlur = Math.max(14, cellSize * 0.22);
+        ctx.fillStyle = 'rgba(122, 166, 230, 0.24)';
         ctx.beginPath();
         ctx.arc(x, y, Math.max(5, cellSize * 0.06), 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(14, 20, 29, 0.42)';
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(4, cellSize * 0.045), 0, Math.PI * 2);
+        ctx.fill();
       } else {
+        ctx.shadowColor = 'rgba(134, 190, 255, 0.26)';
+        ctx.shadowBlur = Math.max(16, cellSize * 0.24);
+        ctx.fillStyle = 'rgba(184, 211, 248, 0.18)';
+        ctx.fillText(char, x, y - cellSize * 0.05);
+        ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(209, 222, 244, 0.18)';
         ctx.fillText(char, x, y - cellSize * 0.03);
         ctx.fillStyle = '#0b121c';
@@ -77,6 +89,9 @@ function SlabMesh({ text }) {
       Array.from({ length: 6 }, () =>
         new THREE.MeshStandardMaterial({
           map: glyphTexture,
+          emissiveMap: glyphTexture,
+          emissive: '#7fa6d6',
+          emissiveIntensity: 0.12,
           roughness: 0.56,
           metalness: 0.32,
           color: '#8d99aa',
