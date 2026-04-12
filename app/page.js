@@ -309,22 +309,19 @@ export default function Page() {
 
   return (
     <div className="page-shell">
-      <div className="ambient ambient-a" />
-      <div className="ambient ambient-b" />
-
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Preglyph home">
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-copy">
+            <span className="brand-kicker">Public archive</span>
             <strong>Preglyph</strong>
           </span>
         </a>
 
-        <nav className="nav">
-          <a href="#about">About</a>
-          <a href="#my-edit">My Edit</a>
-          <a href="#connect">Connect</a>
-        </nav>
+        <div className="nav">
+          <span className="nav-note">Human-made permanent records</span>
+          <a className="connect-chip" href="#connect">Connect</a>
+        </div>
       </header>
 
       <main id="top" className="main-layout">

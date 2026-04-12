@@ -1,14 +1,18 @@
 :root {
-  --bg: #e8e3c8;
-  --bg-deep: #cbb66f;
-  --panel: rgba(247, 244, 229, 0.82);
-  --panel-border: rgba(126, 110, 58, 0.18);
-  --panel-border-strong: rgba(126, 110, 58, 0.3);
-  --text: #20324e;
-  --muted: rgba(76, 82, 70, 0.72);
-  --shadow: 0 20px 50px rgba(92, 84, 42, 0.12);
+  --bg: #f3efe4;
+  --bg-deep: #e8decb;
+  --panel: rgba(255, 252, 246, 0.88);
+  --panel-border: rgba(73, 62, 42, 0.12);
+  --panel-border-strong: rgba(73, 62, 42, 0.2);
+  --text: #1f2328;
+  --muted: rgba(73, 67, 57, 0.72);
+  --tile: #56657b;
+  --tile-deep: #334152;
+  --tile-ink: rgba(30, 36, 45, 0.88);
+  --tile-border: rgba(255, 255, 255, 0.58);
+  --shadow: 0 18px 36px rgba(74, 60, 39, 0.08);
   --radius-xl: 32px;
-  --radius-lg: 24px;
+  --radius-lg: 22px;
   --container: 1180px;
 }
 
@@ -26,10 +30,20 @@ body {
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at 16% 10%, rgba(146, 184, 116, 0.24), transparent 26%),
-    radial-gradient(circle at 84% 18%, rgba(208, 181, 84, 0.2), transparent 24%),
-    radial-gradient(circle at 50% 14%, rgba(255, 251, 240, 0.52), transparent 32%),
-    linear-gradient(180deg, #f3eed9 0%, #ece6c8 48%, #e2d7a8 100%);
+    radial-gradient(circle at 50% -6%, rgba(255, 255, 255, 0.86), transparent 24%),
+    radial-gradient(circle at 10% 12%, rgba(207, 190, 152, 0.14), transparent 26%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: linear-gradient(rgba(88, 75, 48, 0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(88, 75, 48, 0.18) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 78%);
 }
 
 a {
@@ -70,12 +84,11 @@ button {
   background: radial-gradient(circle, rgba(205, 176, 92, 0.26), rgba(205, 176, 92, 0));
 }
 
-.topbar,
 .glass-panel,
 .inscription,
 .slab-button {
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
 }
 
 .topbar {
@@ -87,10 +100,12 @@ button {
   justify-content: space-between;
   gap: 24px;
   padding: 14px 18px;
-  border-radius: 999px;
+  border-radius: 18px;
   border: 1px solid var(--panel-border);
-  background: linear-gradient(180deg, rgba(255, 251, 241, 0.94), rgba(241, 237, 224, 0.88));
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  background: rgba(255, 252, 247, 0.8);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .brand {
@@ -102,11 +117,10 @@ button {
 .brand-mark {
   width: 38px;
   height: 38px;
-  border-radius: 13px;
-  border: 1px solid rgba(127, 116, 80, 0.18);
-  background:
-    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(225, 218, 192, 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), inset 0 -1px 0 rgba(141, 127, 85, 0.16);
+  border-radius: 12px;
+  border: 1px solid rgba(94, 106, 124, 0.22);
+  background: linear-gradient(145deg, rgba(108, 126, 152, 0.92), rgba(58, 74, 96, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(17, 23, 31, 0.28);
   position: relative;
 }
 
@@ -115,7 +129,7 @@ button {
   content: '';
   position: absolute;
   inset: 8px;
-  border: 1px solid rgba(138, 126, 89, 0.18);
+  border: 1px solid rgba(241, 245, 249, 0.38);
   border-radius: 8px;
 }
 
@@ -125,18 +139,31 @@ button {
   border-top: 0;
 }
 
+.brand-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.brand-kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .brand-copy strong {
   font-size: 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-weight: 600;
 }
 
 .nav {
   display: flex;
-  gap: 22px;
+  align-items: center;
+  gap: 12px;
 }
 
-.nav a,
+.nav-note,
 .info-card p,
 .eyebrow,
 time,
@@ -148,12 +175,26 @@ time,
   color: var(--muted);
 }
 
-.nav a {
-  font-size: 0.94rem;
+.nav-note {
+  font-size: 0.88rem;
 }
 
-.nav a:hover {
+.connect-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(73, 62, 42, 0.16);
+  background: rgba(255, 255, 255, 0.52);
   color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.connect-chip:hover {
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .main-layout {
@@ -165,10 +206,8 @@ time,
 .glass-panel,
 .slab-button {
   border: 1px solid var(--panel-border);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08)),
-    linear-gradient(180deg, rgba(252, 249, 241, 0.88), rgba(239, 234, 219, 0.74));
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.46);
+  background: var(--panel);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.54);
 }
 
 .monolith-row {
@@ -240,7 +279,7 @@ time,
 .slab-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
   margin-top: 8px;
   margin-bottom: 24px;
 }
@@ -248,20 +287,18 @@ time,
 .slab-button {
   appearance: none;
   width: 100%;
-  padding: 0;
+  padding: 14px;
   border-radius: var(--radius-lg);
   text-align: left;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
 }
 
 .slab-button:hover {
   transform: translateY(-2px);
-  border-color: rgba(216, 241, 255, 0.26);
+  border-color: rgba(73, 62, 42, 0.22);
+  box-shadow: 0 22px 34px rgba(74, 60, 39, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
 .slab-meta-top,
@@ -308,17 +345,18 @@ time,
   position: relative;
   overflow: hidden;
   display: grid;
-  border-radius: 14px;
-  border: 1px solid rgba(239, 248, 255, 0.72);
+  border-radius: 16px;
+  border: 1px solid var(--tile-border);
   background:
-    linear-gradient(180deg, rgba(137, 181, 233, 0.3) 0%, rgba(137, 181, 233, 0) 24%),
-    linear-gradient(145deg, rgba(23, 60, 112, 0.78) 0%, rgba(12, 34, 70, 0.82) 48%, rgba(7, 19, 45, 0.88) 100%);
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(123, 142, 166, 0.14), rgba(123, 142, 166, 0) 22%),
+    linear-gradient(145deg, rgba(96, 113, 136, 0.98) 0%, rgba(67, 84, 105, 0.98) 42%, rgba(47, 61, 77, 0.98) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(236, 247, 255, 0.54),
-    inset 0 -1px 0 rgba(4, 12, 28, 0.38),
-    inset 0 16px 26px rgba(170, 209, 255, 0.12),
-    inset 0 -24px 30px rgba(3, 10, 24, 0.28),
-    0 20px 38px rgba(10, 22, 52, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(21, 28, 37, 0.26),
+    inset 0 14px 20px rgba(255, 255, 255, 0.04),
+    inset 0 -14px 20px rgba(25, 31, 41, 0.14),
+    0 10px 18px rgba(55, 64, 78, 0.12);
 }
 
 .inscription.preview {
@@ -341,22 +379,21 @@ time,
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 28%, rgba(7, 18, 43, 0.12) 100%),
-    linear-gradient(120deg, rgba(195, 227, 255, 0.16), transparent 30%, transparent 66%, rgba(201, 229, 255, 0.08));
-  opacity: 0.95;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 24%, rgba(25, 31, 41, 0.08) 100%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 16%, transparent 84%, rgba(22, 29, 39, 0.1));
   pointer-events: none;
 }
 
 .inscription::before {
   content: '';
   position: absolute;
-  inset: 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(214, 233, 255, 0.16);
+  inset: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(5, 14, 34, 0.34),
-    inset 0 0 22px rgba(0, 0, 0, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(25, 31, 41, 0.32),
+    inset 0 0 0 1px rgba(33, 42, 54, 0.12);
   pointer-events: none;
 }
 
@@ -366,12 +403,11 @@ time,
   display: grid;
   place-items: center;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: rgba(7, 17, 34, 0.68);
+  color: var(--tile-ink);
   text-transform: uppercase;
   text-shadow:
-    0 1px 0 rgba(191, 222, 255, 0.08),
-    0 -1px 0 rgba(3, 8, 18, 0.48),
-    0 2px 3px rgba(0, 0, 0, 0.22);
+    0 1px 0 rgba(255, 255, 255, 0.12),
+    0 -1px 0 rgba(23, 31, 40, 0.38);
 }
 
 .inscription.preview .cell {
@@ -418,8 +454,8 @@ time,
 .detail-dim {
   position: absolute;
   inset: 0;
-  background: rgba(2, 8, 20, 0.62);
-  backdrop-filter: blur(8px);
+  background: rgba(34, 29, 22, 0.28);
+  backdrop-filter: blur(6px);
 }
 
 .detail-panel {
@@ -427,7 +463,8 @@ time,
   z-index: 1;
   width: min(980px, 100%);
   padding: 22px;
-  border-radius: 30px;
+  border-radius: 28px;
+  background: rgba(255, 252, 247, 0.92);
 }
 
 .detail-close {
@@ -437,7 +474,7 @@ time,
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.68);
   color: var(--text);
   cursor: pointer;
 }
@@ -458,7 +495,7 @@ time,
 .detail-author strong {
   display: block;
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .detail-tx {
@@ -468,14 +505,14 @@ time,
 }
 
 .glass-subpanel {
-  border: 1px solid rgba(216, 241, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(73, 62, 42, 0.1);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .detail-tx code {
   display: block;
   overflow-wrap: anywhere;
-  color: rgba(231, 245, 255, 0.96);
+  color: rgba(41, 48, 58, 0.92);
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
 }
