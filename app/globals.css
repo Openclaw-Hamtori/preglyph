@@ -1,12 +1,12 @@
 :root {
-  --bg: #eef2e5;
-  --bg-deep: #e4dcc3;
-  --panel: rgba(255, 253, 247, 0.82);
-  --panel-border: rgba(120, 107, 69, 0.18);
-  --panel-border-strong: rgba(120, 107, 69, 0.3);
-  --text: #2a3240;
-  --muted: rgba(83, 88, 79, 0.72);
-  --shadow: 0 20px 50px rgba(89, 91, 65, 0.12);
+  --bg: #e8e3c8;
+  --bg-deep: #cbb66f;
+  --panel: rgba(247, 244, 229, 0.82);
+  --panel-border: rgba(126, 110, 58, 0.18);
+  --panel-border-strong: rgba(126, 110, 58, 0.3);
+  --text: #20324e;
+  --muted: rgba(76, 82, 70, 0.72);
+  --shadow: 0 20px 50px rgba(92, 84, 42, 0.12);
   --radius-xl: 32px;
   --radius-lg: 24px;
   --container: 1180px;
@@ -26,10 +26,10 @@ body {
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at 16% 10%, rgba(197, 219, 175, 0.38), transparent 24%),
-    radial-gradient(circle at 84% 18%, rgba(212, 188, 112, 0.24), transparent 24%),
-    radial-gradient(circle at 50% 14%, rgba(255, 251, 240, 0.72), transparent 30%),
-    linear-gradient(180deg, #f7f6ed 0%, #edf2e4 44%, #ebe4cf 100%);
+    radial-gradient(circle at 16% 10%, rgba(146, 184, 116, 0.24), transparent 26%),
+    radial-gradient(circle at 84% 18%, rgba(208, 181, 84, 0.2), transparent 24%),
+    radial-gradient(circle at 50% 14%, rgba(255, 251, 240, 0.52), transparent 32%),
+    linear-gradient(180deg, #f3eed9 0%, #ece6c8 48%, #e2d7a8 100%);
 }
 
 a {
@@ -309,15 +309,16 @@ time,
   overflow: hidden;
   display: grid;
   border-radius: 14px;
-  border: 1px solid rgba(132, 138, 146, 0.28);
+  border: 1px solid rgba(239, 248, 255, 0.72);
   background:
-    linear-gradient(180deg, rgba(242, 244, 247, 0.98) 0%, rgba(220, 224, 230, 0.98) 36%, rgba(196, 201, 208, 0.98) 100%);
+    linear-gradient(180deg, rgba(137, 181, 233, 0.3) 0%, rgba(137, 181, 233, 0) 24%),
+    linear-gradient(145deg, rgba(23, 60, 112, 0.78) 0%, rgba(12, 34, 70, 0.82) 48%, rgba(7, 19, 45, 0.88) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 -1px 0 rgba(122, 128, 138, 0.28),
-    inset 0 22px 28px rgba(255, 255, 255, 0.18),
-    inset 0 -18px 20px rgba(128, 134, 143, 0.1),
-    0 12px 24px rgba(130, 136, 145, 0.1);
+    inset 0 1px 0 rgba(236, 247, 255, 0.54),
+    inset 0 -1px 0 rgba(4, 12, 28, 0.38),
+    inset 0 16px 26px rgba(170, 209, 255, 0.12),
+    inset 0 -24px 30px rgba(3, 10, 24, 0.28),
+    0 20px 38px rgba(10, 22, 52, 0.2);
 }
 
 .inscription.preview {
@@ -340,8 +341,9 @@ time,
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.08) 26%, rgba(110, 116, 125, 0.04) 100%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 18%, transparent 82%, rgba(112, 118, 128, 0.08));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 28%, rgba(7, 18, 43, 0.12) 100%),
+    linear-gradient(120deg, rgba(195, 227, 255, 0.16), transparent 30%, transparent 66%, rgba(201, 229, 255, 0.08));
+  opacity: 0.95;
   pointer-events: none;
 }
 
@@ -350,11 +352,11 @@ time,
   position: absolute;
   inset: 8px;
   border-radius: 10px;
-  border: 1px solid rgba(152, 158, 166, 0.12);
+  border: 1px solid rgba(214, 233, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1px 0 rgba(118, 124, 134, 0.18),
-    inset 0 0 14px rgba(0, 0, 0, 0.025);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(5, 14, 34, 0.34),
+    inset 0 0 22px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
 
@@ -364,12 +366,12 @@ time,
   display: grid;
   place-items: center;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: rgba(70, 76, 84, 0.78);
+  color: rgba(7, 17, 34, 0.68);
   text-transform: uppercase;
   text-shadow:
-    0 -1px 0 rgba(255, 255, 255, 0.56),
-    0 1px 0 rgba(126, 132, 141, 0.42),
-    0 2px 2px rgba(83, 89, 97, 0.18);
+    0 1px 0 rgba(191, 222, 255, 0.08),
+    0 -1px 0 rgba(3, 8, 18, 0.48),
+    0 2px 3px rgba(0, 0, 0, 0.22);
 }
 
 .inscription.preview .cell {
