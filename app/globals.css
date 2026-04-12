@@ -327,16 +327,18 @@ time,
 }
 
 .inscription.preview {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  grid-template-rows: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--grid-size, 9), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-size, 9), minmax(0, 1fr));
   padding: 18px;
 }
 
 .inscription.detail {
-  grid-template-columns: repeat(20, minmax(0, 1fr));
-  grid-template-rows: repeat(20, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--grid-size, 12), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-size, 12), minmax(0, 1fr));
   padding: 16px;
   aspect-ratio: 1 / 1;
+  max-width: 720px;
+  margin-inline: auto;
 }
 
 .inscription::after {
@@ -358,11 +360,11 @@ time,
 }
 
 .inscription.preview .cell {
-  font-size: clamp(0.58rem, 0.8vw, 0.86rem);
+  font-size: var(--cell-font-size, clamp(0.58rem, 0.8vw, 0.86rem));
 }
 
 .inscription.detail .cell {
-  font-size: clamp(0.34rem, 0.48vw, 0.54rem);
+  font-size: var(--cell-font-size, clamp(0.34rem, 0.48vw, 0.54rem));
 }
 
 .cell.empty {
@@ -481,6 +483,12 @@ time,
 .detail-slab-wrap.full-width {
   width: 100%;
   flex-basis: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.detail-slab-wrap.full-width .inscription.detail {
+  width: min(100%, 720px);
 }
 
 .detail-copy {

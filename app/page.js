@@ -327,8 +327,20 @@ function fakeTxHash(id) {
 
 function Inscription({ text, size = 9, variant = 'preview' }) {
   const cells = useMemo(() => buildMatrix(text, size), [text, size]);
+  const fontSize =
+    variant === 'detail'
+      ? `clamp(${Math.max(0.64, 10.4 / size).toFixed(2)}rem, ${Math.max(0.9, 15 / size).toFixed(2)}vw, ${Math.max(0.94, 15.6 / size).toFixed(2)}rem)`
+      : `clamp(${Math.max(0.52, 6 / size).toFixed(2)}rem, ${Math.max(0.7, 8.4 / size).toFixed(2)}vw, ${Math.max(0.82, 8.8 / size).toFixed(2)}rem)`;
+
   return (
-    <div className={`inscription ${variant}`} aria-label={`${size} by ${size} inscription preview`}>
+    <div
+      className={`inscription ${variant}`}
+      aria-label={`${size} by ${size} inscription preview`}
+      style={{
+        '--grid-size': size,
+        '--cell-font-size': fontSize,
+      }}
+    >
       {cells.map((char, index) => (
         <span key={`${char}-${index}`} className={char === ' ' ? 'cell empty' : 'cell'}>
           {char === ' ' ? '·' : char}
