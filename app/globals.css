@@ -255,6 +255,7 @@ time,
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-top: 18px;
+  margin-bottom: 24px;
 }
 
 .slab-button {
@@ -316,9 +317,9 @@ time,
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: repeat(12, minmax(0, 1fr));
-  padding: 14px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  padding: 18px;
   border-radius: 22px;
   border: 1px solid rgba(216, 241, 255, 0.1);
   background:
@@ -342,7 +343,7 @@ time,
   display: grid;
   place-items: center;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: clamp(0.42rem, 0.55vw, 0.62rem);
+  font-size: clamp(0.72rem, 1vw, 1.02rem);
   color: rgba(231, 245, 255, 0.96);
   text-transform: uppercase;
 }

@@ -229,7 +229,7 @@ function sanitizeText(text) {
     .toLocaleUpperCase();
 }
 
-function buildMatrix(text, size = 12) {
+function buildMatrix(text, size = 7) {
   const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
   const padded = [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
   return padded;
@@ -319,7 +319,7 @@ function GlassOrb() {
 function Inscription({ text }) {
   const cells = useMemo(() => buildMatrix(text), [text]);
   return (
-    <div className="inscription" aria-label="12 by 12 inscription preview">
+    <div className="inscription" aria-label="7 by 7 inscription preview">
       {cells.map((char, index) => (
         <span key={`${char}-${index}`} className={char === ' ' ? 'cell empty' : 'cell'}>
           {char === ' ' ? '·' : char}
@@ -394,20 +394,6 @@ export default function Page() {
           ))}
         </section>
 
-        <section id="about" className="bottom-grid">
-          <article className="glass-panel info-card">
-            <p className="eyebrow">About</p>
-            <h3>Preglyph is a public writing layer where only verified humans can publish records.</h3>
-          </article>
-          <article id="my-edit" className="glass-panel info-card">
-            <p className="eyebrow">My Edit</p>
-            <h3>Your writing surface opens after wallet connection and Presence verification.</h3>
-          </article>
-          <article id="connect" className="glass-panel info-card compact-action">
-            <p className="eyebrow">Connect</p>
-            <h3>Connect wallet</h3>
-          </article>
-        </section>
       </main>
 
       {activeRecord && (
