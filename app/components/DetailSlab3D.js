@@ -1,6 +1,7 @@
 'use client';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
@@ -39,12 +40,12 @@ function createGlyphTexture(text, size = 12) {
       const y = inner + row * cellSize + cellSize / 2;
 
       if (char === ' ') {
-        ctx.fillStyle = 'rgba(16,20,28,0.26)';
+        ctx.fillStyle = 'rgba(16,20,28,0.24)';
         ctx.beginPath();
         ctx.arc(x, y, Math.max(4, cellSize * 0.05), 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
         ctx.fillText(char, x, y - cellSize * 0.03);
         ctx.fillStyle = 'rgba(14,18,24,1)';
         ctx.fillText(char, x, y + cellSize * 0.03);
@@ -94,79 +95,62 @@ function RoundedSlabGeometry() {
 }
 
 function SlabMesh({ text }) {
-  const slabRef = useRef(null);
-  const shadowRef = useRef(null);
   const glyphTexture = useMemo(() => createGlyphTexture(text, 12), [text]);
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    if (slabRef.current) {
-      slabRef.current.rotation.x = -0.58 + Math.sin(t * 0.55) * 0.035;
-      slabRef.current.rotation.y = 0.72 + Math.cos(t * 0.45) * 0.05;
-      slabRef.current.rotation.z = -0.14 + Math.sin(t * 0.35) * 0.018;
-      slabRef.current.position.y = 0.08 + Math.sin(t * 0.5) * 0.03;
-    }
-    if (shadowRef.current) {
-      shadowRef.current.scale.x = 1.08 + Math.sin(t * 0.5) * 0.015;
-      shadowRef.current.scale.y = 1.02 + Math.cos(t * 0.5) * 0.015;
-      shadowRef.current.material.opacity = 0.22 + Math.sin(t * 0.5) * 0.015;
-    }
-  });
+  const shadowRef = useRef(null);
 
   return (
-    <group>
-      <mesh ref={shadowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.85, 0]}>
-        <circleGeometry args={[1.78, 48]} />
-        <meshBasicMaterial color="#3a4656" transparent opacity={0.22} />
+    <group rotation={[-0.58, 0.72, -0.14]} position={[0, 0.02, 0]} scale={0.72}>
+      <mesh ref={shadowRef} rotation={[-Math.PI / 2 + 0.4, 0.15, 0]} position={[0, -1.7, -0.14]}>
+        <circleGeometry args={[1.68, 48]} />
+        <meshBasicMaterial color="#3a4656" transparent opacity={0.18} />
       </mesh>
-      <group ref={slabRef}>
-        <mesh castShadow receiveShadow>
-          <RoundedSlabGeometry />
-          <meshPhysicalMaterial
-            color="#6d86ac"
-            metalness={0.08}
-            roughness={0.34}
-            transmission={0.3}
-            thickness={1.45}
-            ior={1.24}
-            clearcoat={0.62}
-            clearcoatRoughness={0.3}
-            reflectivity={0.42}
-            sheen={0.26}
-            sheenColor="#d7e5f7"
-          />
-        </mesh>
 
-        <mesh castShadow receiveShadow position={[0, 0, 0.255]}>
-          <planeGeometry args={[2.08, 2.08]} />
-          <meshPhysicalMaterial
-            color="#5b7088"
-            roughness={0.58}
-            metalness={0.04}
-            transmission={0.08}
-            clearcoat={0.18}
-            clearcoatRoughness={0.72}
-          />
-        </mesh>
+      <mesh castShadow receiveShadow>
+        <RoundedSlabGeometry />
+        <meshPhysicalMaterial
+          color="#6d86ac"
+          metalness={0.06}
+          roughness={0.28}
+          transmission={0.38}
+          thickness={1.55}
+          ior={1.26}
+          clearcoat={0.74}
+          clearcoatRoughness={0.22}
+          reflectivity={0.48}
+          sheen={0.3}
+          sheenColor="#dce8f8"
+        />
+      </mesh>
 
-        <mesh position={[0, 0, 0.262]}>
-          <planeGeometry args={[2.06, 2.06]} />
-          <meshStandardMaterial
-            map={glyphTexture}
-            alphaMap={glyphTexture}
-            transparent
-            alphaTest={0.02}
-            color="#141b23"
-            roughness={0.98}
-            metalness={0.01}
-          />
-        </mesh>
+      <mesh castShadow receiveShadow position={[0, 0, 0.255]}>
+        <planeGeometry args={[2.08, 2.08]} />
+        <meshPhysicalMaterial
+          color="#5b7088"
+          roughness={0.5}
+          metalness={0.03}
+          transmission={0.1}
+          clearcoat={0.22}
+          clearcoatRoughness={0.6}
+        />
+      </mesh>
 
-        <mesh position={[0, 0, -0.22]} receiveShadow>
-          <planeGeometry args={[2.24, 2.24]} />
-          <meshStandardMaterial color="#273342" roughness={1} metalness={0.02} />
-        </mesh>
-      </group>
+      <mesh position={[0, 0, 0.262]}>
+        <planeGeometry args={[2.06, 2.06]} />
+        <meshStandardMaterial
+          map={glyphTexture}
+          alphaMap={glyphTexture}
+          transparent
+          alphaTest={0.02}
+          color="#141b23"
+          roughness={0.98}
+          metalness={0.01}
+        />
+      </mesh>
+
+      <mesh position={[0, 0, -0.22]} receiveShadow>
+        <planeGeometry args={[2.24, 2.24]} />
+        <meshStandardMaterial color="#273342" roughness={1} metalness={0.02} />
+      </mesh>
     </group>
   );
 }
@@ -176,23 +160,36 @@ export default function DetailSlab3D({ text }) {
     <Canvas
       className="detail-canvas"
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0.28, 4.0], fov: 30 }}
+      camera={{ position: [0, 0.18, 5.6], fov: 24 }}
       gl={{ antialias: true, alpha: true }}
       shadows
     >
       <ambientLight intensity={1.12} color="#f7f0e6" />
       <directionalLight
         position={[3.2, 3.8, 3.8]}
-        intensity={3.1}
+        intensity={3.2}
         color="#fff8ec"
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <directionalLight position={[-3.2, -1.8, 1.6]} intensity={0.84} color="#b3caf0" />
-      <pointLight position={[0.4, 1.8, 2.6]} intensity={0.56} color="#edf5ff" />
-      <pointLight position={[-1.4, 0.2, 2.1]} intensity={0.22} color="#b7cced" />
+      <directionalLight position={[-3.2, -1.8, 1.6]} intensity={0.9} color="#bdd2f0" />
+      <pointLight position={[0.4, 1.8, 2.6]} intensity={0.62} color="#edf5ff" />
+      <pointLight position={[-1.4, 0.2, 2.1]} intensity={0.24} color="#c5d7ef" />
+
       <SlabMesh text={text} />
+
+      <OrbitControls
+        enablePan={false}
+        enableZoom
+        enableRotate
+        minDistance={4.4}
+        maxDistance={7.8}
+        minPolarAngle={0.7}
+        maxPolarAngle={2.15}
+        rotateSpeed={0.7}
+        zoomSpeed={0.8}
+      />
     </Canvas>
   );
 }

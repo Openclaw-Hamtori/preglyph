@@ -541,9 +541,10 @@ time,
 
 .detail-3d-stage {
   position: relative;
-  width: min(100%, 760px);
+  width: 100%;
+  max-width: 520px;
   aspect-ratio: 1 / 1;
-  margin-inline: auto;
+  margin: 8px auto 0;
 }
 
 .detail-canvas {
@@ -551,6 +552,12 @@ time,
   height: 100% !important;
   display: block;
   border-radius: 26px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.detail-canvas:active {
+  cursor: grabbing;
 }
 
 
