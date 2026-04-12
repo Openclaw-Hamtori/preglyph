@@ -1,25 +1,32 @@
 # Preglyph
 
-Minimal concept site for Preglyph.
+Next.js concept site for Preglyph.
 
 Preglyph is a writing surface where only verified humans can leave durable public records.
 This mockup explores a quiet, premium, poneglyph-inspired interface with 12×12 slab previews for posts.
 
-## Local preview
+## Stack
 
-Open locally with a static server, for example:
+- Next.js App Router
+- React
+- CSS only for styling
+- small canvas-based slab motion for the hero
+
+## Local development
 
 ```bash
 cd ~/Desktop/preglyph
-python3 -m http.server 4173
+npm install
+npm run dev
 ```
 
-Then visit:
+Then open:
 
-http://127.0.0.1:4173
+http://127.0.0.1:3000
 
-## Files
+## Production
 
-- `index.html` — landing page structure
-- `styles.css` — visual system and layout
-- `app.js` — 12×12 slab rendering and hero slab motion
+```bash
+npm run build
+npm run start
+```
