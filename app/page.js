@@ -229,7 +229,7 @@ function sanitizeText(text) {
     .toLocaleUpperCase();
 }
 
-function buildMatrix(text, size = 7) {
+function buildMatrix(text, size = 9) {
   const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
   const padded = [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
   return padded;
@@ -316,10 +316,19 @@ function GlassOrb() {
   return <canvas ref={canvasRef} className="glass-canvas" aria-hidden="true" />;
 }
 
-function Inscription({ text }) {
-  const cells = useMemo(() => buildMatrix(text), [text]);
+function fakeTxHash(id) {
+  const hex = Array.from(id)
+    .map((char) => char.codePointAt(0).toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 64)
+    .padEnd(64, '0');
+  return `0x${hex}`;
+}
+
+function Inscription({ text, size = 9, variant = 'preview' }) {
+  const cells = useMemo(() => buildMatrix(text, size), [text, size]);
   return (
-    <div className="inscription" aria-label="7 by 7 inscription preview">
+    <div className={`inscription ${variant}`} aria-label={`${size} by ${size} inscription preview`}>
       {cells.map((char, index) => (
         <span key={`${char}-${index}`} className={char === ' ' ? 'cell empty' : 'cell'}>
           {char === ' ' ? '·' : char}
@@ -385,7 +394,7 @@ export default function Page() {
                 <strong>{record.author}</strong>
                 <span>{record.time}</span>
               </div>
-              <Inscription text={record.text} />
+              <Inscription text={record.text} size={9} variant="preview" />
               <div className="slab-meta-bottom">
                 <span>{record.metaLeft}</span>
                 <span>{record.metaRight}</span>
@@ -403,19 +412,23 @@ export default function Page() {
             <button type="button" className="detail-close" onClick={() => setActiveRecord(null)}>
               Close
             </button>
-            <div className="detail-head">
-              <div>
-                <p className="eyebrow">Record detail</p>
-                <h2>{activeRecord.title}</h2>
-              </div>
-              <div className="detail-author">
+            <div className="detail-head simple-head">
+              <div className="detail-author-block">
+                <p className="eyebrow">Recorded by</p>
                 <strong>{activeRecord.author}</strong>
+              </div>
+              <div className="detail-time-block">
+                <p className="eyebrow">Recorded at</p>
                 <span>{activeRecord.time}</span>
               </div>
             </div>
-            <div className="detail-body">
-              <div className="detail-slab-wrap">
-                <Inscription text={activeRecord.text} />
+            <div className="detail-tx glass-subpanel">
+              <p className="eyebrow">Transaction</p>
+              <code>{fakeTxHash(activeRecord.id)}</code>
+            </div>
+            <div className="detail-body stacked-detail">
+              <div className="detail-slab-wrap full-width">
+                <Inscription text={activeRecord.text} size={50} variant="detail" />
               </div>
               <div className="detail-copy">
                 <p>{activeRecord.text}</p>
