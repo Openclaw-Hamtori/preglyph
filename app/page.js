@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
+import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 
 const records = [
   {
@@ -222,21 +223,6 @@ const records = [
   },
 ];
 
-function sanitizeText(text) {
-  return (text || '')
-    .replace(/\s+/g, ' ')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .replace(/[^\p{L}\p{N}\p{M} .,;:'"!?\-،。！？、，؛]/gu, '')
-    .toLocaleUpperCase();
-}
-
-const MATRIX_SIZE = 10;
-
-function buildMatrix(text, size = MATRIX_SIZE) {
-  const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
-  const padded = [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
-  return padded;
-}
 
 function fakeTxHash(seed) {
   const hex = Array.from(seed)
@@ -275,27 +261,15 @@ function formatRecordedAt(relative) {
 }
 
 function Inscription({ text, size = MATRIX_SIZE, variant = 'preview' }) {
-  const cells = useMemo(() => buildMatrix(text, size), [text, size]);
-  const fontSize =
-    variant === 'detail'
-      ? `clamp(${Math.max(0.62, 10.9 / size).toFixed(2)}rem, ${Math.max(0.86, 15.8 / size).toFixed(2)}vw, ${Math.max(0.92, 16.4 / size).toFixed(2)}rem)`
-      : `clamp(${Math.max(0.48, 6.3 / size).toFixed(2)}rem, ${Math.max(0.66, 9 / size).toFixed(2)}vw, ${Math.max(0.76, 9.6 / size).toFixed(2)}rem)`;
+  const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size]);
 
   return (
-    <div
+    <img
       className={`inscription ${variant}`}
-      aria-label={`${size} by ${size} inscription preview`}
-      style={{
-        '--grid-size': size,
-        '--cell-font-size': fontSize,
-      }}
-    >
-      {cells.map((char, index) => (
-        <span key={`${char}-${index}`} className={char === ' ' ? 'cell empty' : 'cell'}>
-          {char === ' ' ? '·' : char}
-        </span>
-      ))}
-    </div>
+      src={textureUrl}
+      alt={`${size} by ${size} inscription preview`}
+      draggable={false}
+    />
   );
 }
 
