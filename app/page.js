@@ -199,15 +199,14 @@ export default function Page() {
 
       <main id="top" className="main-layout">
         <section className="hero-strip glass-panel">
-          <div className="hero-copy">
+          <div className="hero-copy compact-copy">
             <p className="eyebrow">Verified-human public records</p>
-            <h1>Quiet records. Public permanence.</h1>
+            <h1>Public records by verified humans.</h1>
             <p className="hero-text">
-              A simple surface for human-made public writing. Connect a wallet, pass Presence, and
-              leave a durable mark.
+              Connect a wallet, pass Presence, and leave a durable public mark.
             </p>
           </div>
-          <div className="hero-orb-wrap">
+          <div className="hero-orb-wrap compact-orb">
             <GlassOrb />
           </div>
         </section>
