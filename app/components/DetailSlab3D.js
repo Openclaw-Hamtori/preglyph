@@ -59,42 +59,78 @@ function createGlyphTexture(text, size = 9) {
   return texture;
 }
 
+function FlatRoundedSlabGeometry() {
+  const geometry = useMemo(() => {
+    const width = 2.44;
+    const height = 2.44;
+    const depth = 0.34;
+    const radius = 0.14;
+    const shape = new THREE.Shape();
+    const x = -width / 2;
+    const y = -height / 2;
+
+    shape.moveTo(x + radius, y);
+    shape.lineTo(x + width - radius, y);
+    shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+    shape.lineTo(x + width, y + height - radius);
+    shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    shape.lineTo(x + radius, y + height);
+    shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+    shape.lineTo(x, y + radius);
+    shape.quadraticCurveTo(x, y, x + radius, y);
+
+    const geom = new THREE.ExtrudeGeometry(shape, {
+      depth,
+      bevelEnabled: true,
+      bevelSegments: 10,
+      steps: 1,
+      bevelSize: 0.022,
+      bevelThickness: 0.022,
+      curveSegments: 24,
+    });
+    geom.center();
+    return geom;
+  }, []);
+
+  return <primitive object={geometry} />;
+}
+
 function SlabMesh({ text }) {
   const glyphTexture = useMemo(() => createGlyphTexture(text, 9), [text]);
 
   return (
     <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.76}>
       <mesh>
-        <boxGeometry args={[2.44, 2.44, 0.34]} />
+        <FlatRoundedSlabGeometry />
         <meshPhysicalMaterial
-          color="#40597b"
-          metalness={0.08}
-          roughness={0.34}
-          transmission={0.26}
-          thickness={1.3}
-          ior={1.22}
-          clearcoat={0.6}
-          clearcoatRoughness={0.28}
-          reflectivity={0.34}
-          sheen={0.18}
+          color="#455f82"
+          metalness={0.06}
+          roughness={0.36}
+          transmission={0.2}
+          thickness={1.15}
+          ior={1.2}
+          clearcoat={0.52}
+          clearcoatRoughness={0.32}
+          reflectivity={0.28}
+          sheen={0.14}
           sheenColor="#b8cde6"
         />
       </mesh>
 
       <mesh position={[0, 0, 0.176]}>
-        <planeGeometry args={[2.16, 2.16]} />
+        <planeGeometry args={[2.12, 2.12]} />
         <meshPhysicalMaterial
-          color="#537099"
-          roughness={0.46}
+          color="#547198"
+          roughness={0.48}
           metalness={0.03}
-          transmission={0.06}
-          clearcoat={0.16}
-          clearcoatRoughness={0.62}
+          transmission={0.04}
+          clearcoat={0.12}
+          clearcoatRoughness={0.7}
         />
       </mesh>
 
       <mesh position={[0, 0, 0.182]}>
-        <planeGeometry args={[2.02, 2.02]} />
+        <planeGeometry args={[1.98, 1.98]} />
         <meshStandardMaterial
           map={glyphTexture}
           alphaMap={glyphTexture}
