@@ -13,12 +13,12 @@ function sanitizeText(text) {
     .toLocaleUpperCase();
 }
 
-function buildMatrix(text, size = 12) {
+function buildMatrix(text, size = 9) {
   const cleaned = Array.from(sanitizeText(text)).slice(0, size * size);
   return [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
 }
 
-function createGlyphTexture(text, size = 12) {
+function createGlyphTexture(text, size = 9) {
   const canvas = document.createElement('canvas');
   canvas.width = 1400;
   canvas.height = 1400;
@@ -59,83 +59,48 @@ function createGlyphTexture(text, size = 12) {
   return texture;
 }
 
-function RoundedSlabGeometry() {
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    const width = 2.62;
-    const height = 2.62;
-    const radius = 0.18;
-    const x = -width / 2;
-    const y = -height / 2;
-
-    shape.moveTo(x + radius, y);
-    shape.lineTo(x + width - radius, y);
-    shape.quadraticCurveTo(x + width, y, x + width, y + radius);
-    shape.lineTo(x + width, y + height - radius);
-    shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    shape.lineTo(x + radius, y + height);
-    shape.quadraticCurveTo(x, y + height, x, y + height - radius);
-    shape.lineTo(x, y + radius);
-    shape.quadraticCurveTo(x, y, x + radius, y);
-
-    const geom = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.42,
-      bevelEnabled: true,
-      bevelSegments: 10,
-      steps: 1,
-      bevelSize: 0.045,
-      bevelThickness: 0.05,
-      curveSegments: 28,
-    });
-    geom.center();
-    return geom;
-  }, []);
-
-  return <primitive object={geometry} />;
-}
-
 function SlabMesh({ text }) {
-  const glyphTexture = useMemo(() => createGlyphTexture(text, 12), [text]);
+  const glyphTexture = useMemo(() => createGlyphTexture(text, 9), [text]);
 
   return (
-    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.72}>
+    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.76}>
       <mesh>
-        <RoundedSlabGeometry />
+        <boxGeometry args={[2.44, 2.44, 0.34]} />
         <meshPhysicalMaterial
-          color="#6d86ac"
-          metalness={0.06}
-          roughness={0.28}
-          transmission={0.38}
-          thickness={1.55}
-          ior={1.26}
-          clearcoat={0.74}
-          clearcoatRoughness={0.22}
-          reflectivity={0.48}
-          sheen={0.3}
-          sheenColor="#dce8f8"
+          color="#40597b"
+          metalness={0.08}
+          roughness={0.34}
+          transmission={0.26}
+          thickness={1.3}
+          ior={1.22}
+          clearcoat={0.6}
+          clearcoatRoughness={0.28}
+          reflectivity={0.34}
+          sheen={0.18}
+          sheenColor="#b8cde6"
         />
       </mesh>
 
-      <mesh position={[0, 0, 0.255]}>
-        <planeGeometry args={[2.08, 2.08]} />
+      <mesh position={[0, 0, 0.176]}>
+        <planeGeometry args={[2.16, 2.16]} />
         <meshPhysicalMaterial
-          color="#5b7088"
-          roughness={0.5}
+          color="#537099"
+          roughness={0.46}
           metalness={0.03}
-          transmission={0.1}
-          clearcoat={0.22}
-          clearcoatRoughness={0.6}
+          transmission={0.06}
+          clearcoat={0.16}
+          clearcoatRoughness={0.62}
         />
       </mesh>
 
-      <mesh position={[0, 0, 0.262]}>
-        <planeGeometry args={[2.06, 2.06]} />
+      <mesh position={[0, 0, 0.182]}>
+        <planeGeometry args={[2.02, 2.02]} />
         <meshStandardMaterial
           map={glyphTexture}
           alphaMap={glyphTexture}
           transparent
           alphaTest={0.02}
-          color="#141b23"
+          color="#121822"
           roughness={0.98}
           metalness={0.01}
         />
