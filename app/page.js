@@ -6,23 +6,50 @@ const records = [
   {
     author: 'chae.eth',
     time: '12m',
+    title: 'Permanent public writing changes how carefully people speak.',
+    text: 'Permanent public writing changes how carefully people speak.',
     metaLeft: 'Ethereum mainnet',
     metaRight: 'reply · cite',
-    text: 'Permanent public writing changes how carefully people speak.',
   },
   {
     author: '0x8a2...4af1',
     time: '34m',
-    metaLeft: 'presence-gated',
-    metaRight: 'open',
+    title: 'Presence should unlock the right to leave durable public marks.',
     text: 'Presence should unlock the right to leave durable public marks.',
+    metaLeft: 'Presence-gated',
+    metaRight: 'open',
   },
   {
     author: 'minji.eth',
     time: '1h',
+    title: 'A record should feel closer to engraving than posting.',
+    text: 'A record should feel closer to engraving than posting.',
     metaLeft: '12×12 preview',
     metaRight: 'quote',
-    text: 'A record should feel closer to engraving than posting.',
+  },
+  {
+    author: 'sora.eth',
+    time: '2h',
+    title: 'The feed should feel quiet enough that every line carries weight.',
+    text: 'The feed should feel quiet enough that every line carries weight.',
+    metaLeft: 'public record',
+    metaRight: 'reply',
+  },
+  {
+    author: '0x44...da2',
+    time: '4h',
+    title: 'Wallet is the account. Presence is the writing gate.',
+    text: 'Wallet is the account. Presence is the writing gate.',
+    metaLeft: 'wallet id',
+    metaRight: 'cite',
+  },
+  {
+    author: 'jiwoo.eth',
+    time: '7h',
+    title: 'A human record layer should feel slower than a normal social app.',
+    text: 'A human record layer should feel slower than a normal social app.',
+    metaLeft: 'human record',
+    metaRight: 'open',
   },
 ];
 
@@ -39,7 +66,7 @@ function buildMatrix(text, size = 12) {
   return padded.split('');
 }
 
-function GlassCanvas() {
+function GlassOrb() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -54,113 +81,52 @@ function GlassCanvas() {
     let frameId = 0;
     let offset = 0;
 
-    const roundedRect = (x, y, w, h, r) => {
-      context.beginPath();
-      context.moveTo(x + r, y);
-      context.arcTo(x + w, y, x + w, y + h, r);
-      context.arcTo(x + w, y + h, x, y + h, r);
-      context.arcTo(x, y + h, x, y, r);
-      context.arcTo(x, y, x + w, y, r);
-      context.closePath();
-    };
-
     const draw = () => {
       context.clearRect(0, 0, width, height);
 
-      const bg = context.createRadialGradient(width * 0.7, height * 0.15, 20, width * 0.5, height * 0.5, width * 0.8);
-      bg.addColorStop(0, 'rgba(105, 195, 255, 0.14)');
-      bg.addColorStop(0.45, 'rgba(70, 120, 255, 0.09)');
-      bg.addColorStop(1, 'rgba(2, 8, 23, 0)');
+      const bg = context.createRadialGradient(width * 0.3, height * 0.25, 10, width * 0.5, height * 0.5, width * 0.7);
+      bg.addColorStop(0, 'rgba(138, 210, 255, 0.2)');
+      bg.addColorStop(0.45, 'rgba(116, 169, 255, 0.12)');
+      bg.addColorStop(1, 'rgba(5, 11, 22, 0)');
       context.fillStyle = bg;
       context.fillRect(0, 0, width, height);
 
-      const cols = 14;
-      const rows = 14;
-      const cellW = width / cols;
-      const cellH = height / rows;
-
-      context.strokeStyle = 'rgba(190, 225, 255, 0.07)';
-      context.lineWidth = 1;
-      for (let i = 1; i < cols; i += 1) {
-        const x = Math.round(i * cellW) + 0.5;
+      context.strokeStyle = 'rgba(190, 225, 255, 0.08)';
+      for (let i = 1; i < 12; i += 1) {
+        const x = Math.round((width / 12) * i) + 0.5;
         context.beginPath();
         context.moveTo(x, 0);
         context.lineTo(x, height);
         context.stroke();
       }
-      for (let i = 1; i < rows; i += 1) {
-        const y = Math.round(i * cellH) + 0.5;
+      for (let i = 1; i < 12; i += 1) {
+        const y = Math.round((height / 12) * i) + 0.5;
         context.beginPath();
         context.moveTo(0, y);
         context.lineTo(width, y);
         context.stroke();
       }
 
-      const slabW = width * 0.46;
-      const slabH = height * 0.72;
-      const slabX = width * 0.28 + Math.sin(offset * 0.5) * 10;
-      const slabY = height * 0.12 + Math.cos(offset * 0.7) * 8;
-      const radius = 34;
-
-      const slabGradient = context.createLinearGradient(slabX, slabY, slabX + slabW, slabY + slabH);
-      slabGradient.addColorStop(0, 'rgba(255,255,255,0.2)');
-      slabGradient.addColorStop(0.15, 'rgba(157,220,255,0.14)');
-      slabGradient.addColorStop(0.6, 'rgba(70,120,255,0.08)');
-      slabGradient.addColorStop(1, 'rgba(255,255,255,0.06)');
-      roundedRect(slabX, slabY, slabW, slabH, radius);
-      context.fillStyle = slabGradient;
-      context.fill();
-
-      context.strokeStyle = 'rgba(215, 240, 255, 0.28)';
-      context.lineWidth = 1.15;
-      roundedRect(slabX, slabY, slabW, slabH, radius);
-      context.stroke();
-
-      roundedRect(slabX + 18, slabY + 18, slabW - 36, slabH - 36, 26);
-      context.strokeStyle = 'rgba(255,255,255,0.08)';
-      context.stroke();
-
-      const glare = context.createLinearGradient(slabX, slabY, slabX + slabW * 0.6, slabY + slabH * 0.4);
-      glare.addColorStop(0, 'rgba(255,255,255,0.34)');
-      glare.addColorStop(0.2, 'rgba(185,230,255,0.14)');
-      glare.addColorStop(1, 'rgba(255,255,255,0)');
-      context.fillStyle = glare;
-      roundedRect(slabX + 10, slabY + 10, slabW * 0.52, slabH * 0.28, 28);
-      context.fill();
-
-      context.strokeStyle = 'rgba(164, 221, 255, 0.12)';
-      for (let i = 1; i < 6; i += 1) {
-        const y = slabY + slabH * (i / 6);
-        context.beginPath();
-        context.moveTo(slabX + 28, y + Math.sin(offset + i) * 3);
-        context.lineTo(slabX + slabW - 28, y - Math.cos(offset + i) * 3);
-        context.stroke();
-      }
-
-      context.fillStyle = 'rgba(214, 239, 255, 0.25)';
-      for (let i = 0; i < 32; i += 1) {
-        const x = slabX + 42 + ((i % 6) * (slabW * 0.14)) + Math.sin(offset + i) * 3;
-        const y = slabY + 56 + (Math.floor(i / 6) * (slabH * 0.13)) + Math.cos(offset + i * 0.6) * 3;
-        context.beginPath();
-        context.arc(x, y, 1.35, 0, Math.PI * 2);
-        context.fill();
-      }
-
-      const orbX = width * 0.2 + Math.cos(offset * 0.9) * 8;
-      const orbY = height * 0.26 + Math.sin(offset * 0.8) * 8;
-      const orb = context.createRadialGradient(orbX, orbY, 8, orbX, orbY, 80);
-      orb.addColorStop(0, 'rgba(220,245,255,0.95)');
-      orb.addColorStop(0.18, 'rgba(156,220,255,0.58)');
-      orb.addColorStop(0.5, 'rgba(78,124,255,0.18)');
-      orb.addColorStop(1, 'rgba(78,124,255,0)');
+      const orbX = width * 0.52 + Math.cos(offset * 0.8) * 8;
+      const orbY = height * 0.45 + Math.sin(offset * 0.65) * 8;
+      const orb = context.createRadialGradient(orbX, orbY, 8, orbX, orbY, Math.min(width, height) * 0.28);
+      orb.addColorStop(0, 'rgba(235,248,255,0.95)');
+      orb.addColorStop(0.18, 'rgba(162,224,255,0.58)');
+      orb.addColorStop(0.5, 'rgba(102,138,255,0.22)');
+      orb.addColorStop(1, 'rgba(102,138,255,0)');
       context.fillStyle = orb;
       context.beginPath();
-      context.arc(orbX, orbY, 80, 0, Math.PI * 2);
+      context.arc(orbX, orbY, Math.min(width, height) * 0.28, 0, Math.PI * 2);
       context.fill();
 
-      context.strokeStyle = 'rgba(166, 224, 255, 0.16)';
+      context.strokeStyle = 'rgba(166, 224, 255, 0.18)';
+      context.lineWidth = 1.15;
       context.beginPath();
-      context.arc(width * 0.5, height * 0.52, width * 0.34 + Math.sin(offset) * 6, Math.PI * 0.12, Math.PI * 1.85);
+      context.arc(width * 0.5, height * 0.48, Math.min(width, height) * 0.33 + Math.sin(offset) * 4, Math.PI * 0.12, Math.PI * 1.84);
+      context.stroke();
+
+      context.beginPath();
+      context.arc(width * 0.5, height * 0.48, Math.min(width, height) * 0.24 + Math.cos(offset * 0.8) * 3, Math.PI * 0.2, Math.PI * 1.72);
       context.stroke();
     };
 
@@ -188,7 +154,6 @@ function GlassCanvas() {
     resize();
     animate();
     window.addEventListener('resize', resize);
-
     return () => {
       window.removeEventListener('resize', resize);
       window.cancelAnimationFrame(frameId);
@@ -222,171 +187,74 @@ export default function Page() {
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-copy">
             <strong>Preglyph</strong>
-            <small>public records by verified humans</small>
           </span>
         </a>
 
         <nav className="nav">
-          <a href="#concept">Concept</a>
-          <a href="#gate">Gate</a>
-          <a href="#records">Records</a>
-          <a href="#direction">Direction</a>
+          <a href="#about">About</a>
+          <a href="#my-edit">My Edit</a>
+          <a href="#connect">Connect</a>
         </nav>
-
-        <a className="button button-glass" href="#records">
-          Connect wallet
-        </a>
       </header>
 
-      <main id="top">
-        <section className="hero hero-grid">
-          <div className="hero-copy glass-panel soft-panel">
-            <p className="eyebrow">Presence-gated writing on Ethereum</p>
-            <h1>Write only when your presence is real.</h1>
+      <main id="top" className="main-layout">
+        <section className="hero-strip glass-panel">
+          <div className="hero-copy">
+            <p className="eyebrow">Verified-human public records</p>
+            <h1>Quiet records. Public permanence.</h1>
             <p className="hero-text">
-              Preglyph is a minimal writing layer for durable public records. Wallet identifies the
-              writer. Presence unlocks the right to inscribe. Ethereum keeps the text.
+              A simple surface for human-made public writing. Connect a wallet, pass Presence, and
+              leave a durable mark.
             </p>
-            <div className="hero-actions">
-              <a className="button button-primary" href="#gate">
-                Try the writer gate
-              </a>
-              <a className="button button-glass" href="#direction">
-                See direction
-              </a>
-            </div>
-            <div className="hero-notes">
-              <span>Dark blue liquid glass</span>
-              <span>Presence-auth gated writing</span>
-              <span>12×12 slab previews</span>
-            </div>
           </div>
+          <div className="hero-orb-wrap">
+            <GlassOrb />
+          </div>
+        </section>
 
-          <div className="hero-visual glass-panel">
-            <div className="panel-head compact-head">
-              <div>
-                <p className="micro-label">Glass monolith</p>
-                <h2>The interface as a quiet inscription chamber.</h2>
+        <section className="records-grid" aria-label="Public records list">
+          {records.map((record) => (
+            <article className="record-card glass-panel" key={`${record.author}-${record.time}`}>
+              <div className="record-head">
+                <div>
+                  <strong>{record.author}</strong>
+                  <span>verified human</span>
+                </div>
+                <time>{record.time}</time>
               </div>
-              <span className="micro-chip">live concept</span>
-            </div>
-            <div className="glass-stage">
-              <GlassCanvas />
-              <div className="glass-overlay glass-badge top">Presence verified</div>
-              <div className="glass-overlay glass-card bottom">
-                <strong>Wallet connects. Presence verifies. Writing unlocks.</strong>
-                <p>Quiet motion, liquid glass, and hard limits on who gets to write.</p>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section id="concept" className="section glass-panel section-split">
-          <div>
-            <p className="eyebrow">Concept</p>
-            <h2>Minimal, blue, calm.</h2>
-          </div>
-          <p className="section-text narrow">
-            Less stone museum, more nocturnal liquid glass. The surface should feel premium and
-            restrained, with very little chrome and just enough motion to feel alive.
-          </p>
-        </section>
-
-        <section className="section cards-row">
-          <article className="glass-panel feature-card">
-            <span className="micro-label">Visual language</span>
-            <h3>Deep blue glass, soft light</h3>
-            <p>Layered blur, pale blue highlights, restrained glow, and precise spacing.</p>
-          </article>
-          <article className="glass-panel feature-card">
-            <span className="micro-label">Interaction model</span>
-            <h3>Unlock, then inscribe</h3>
-            <p>Writing is the premium act. Browsing stays quiet. Trust appears before action.</p>
-          </article>
-          <article className="glass-panel feature-card">
-            <span className="micro-label">Preview model</span>
-            <h3>12×12 as the artifact</h3>
-            <p>Each post previews as a fixed glass slab so the feed reads like collected objects.</p>
-          </article>
-        </section>
-
-        <section id="gate" className="section glass-panel">
-          <div className="section-split stack-mobile">
-            <div>
-              <p className="eyebrow">Gate</p>
-              <h2>A very small first product.</h2>
-            </div>
-            <p className="section-text narrow">
-              The first version does not need likes or feed noise. It needs one clean sequence:
-              connect wallet, pass Presence, leave a record.
-            </p>
-          </div>
-
-          <div className="gate-flow">
-            <div className="glass-panel gate-step">
-              <span className="step-index">01</span>
-              <strong>Connect wallet</strong>
-              <p>Wallet becomes the public anchor. ENS stays optional.</p>
-            </div>
-            <div className="glass-panel gate-step">
-              <span className="step-index">02</span>
-              <strong>Pass presence</strong>
-              <p>Only verified humans unlock the right to publish.</p>
-            </div>
-            <div className="glass-panel gate-step">
-              <span className="step-index">03</span>
-              <strong>Commit record</strong>
-              <p>Short text becomes a durable public inscription.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="records" className="section records-wrap">
-          <div className="section-split stack-mobile align-end glass-panel header-panel">
-            <div>
-              <p className="eyebrow">Records</p>
-              <h2>Every post previews as a glass slab.</h2>
-            </div>
-            <p className="section-text narrow">
-              Each preview is capped at a 12×12 field. Empty cells stay empty. Full text opens only
-              when the reader chooses to go deeper.
-            </p>
-          </div>
-
-          <div className="records-grid">
-            {records.map((record) => (
-              <article className="record-card glass-panel" key={`${record.author}-${record.time}`}>
-                <div className="record-head">
-                  <div>
-                    <strong>{record.author}</strong>
-                    <span>verified human</span>
-                  </div>
-                  <time>{record.time}</time>
+              <div className="record-body">
+                <div className="record-copy">
+                  <h2>{record.title}</h2>
+                  <p>
+                    Public, durable, and attributable. The preview stays constrained. The full text
+                    opens only when a reader chooses it.
+                  </p>
                 </div>
                 <Inscription text={record.text} />
-                <div className="record-foot">
-                  <span>{record.metaLeft}</span>
-                  <span>{record.metaRight}</span>
-                </div>
-              </article>
-            ))}
-          </div>
+              </div>
+
+              <div className="record-foot">
+                <span>{record.metaLeft}</span>
+                <span>{record.metaRight}</span>
+              </div>
+            </article>
+          ))}
         </section>
 
-        <section id="direction" className="section cards-row final-row">
-          <div className="glass-panel direction-card wide-card">
-            <p className="eyebrow">Direction</p>
-            <h2>Minimal now. Broader later.</h2>
-            <p className="section-text">
-              Start with verified-human writing, quiet glass surfaces, and compact inscription
-              previews. Add lighter social actions later without changing the core product truth.
-            </p>
-          </div>
-          <div className="stack-list">
-            <div className="glass-panel mini-card">Core post = Ethereum</div>
-            <div className="glass-panel mini-card">Write access = Presence</div>
-            <div className="glass-panel mini-card muted">Likes / recasts / follows = later</div>
-          </div>
+        <section id="about" className="bottom-grid">
+          <article className="glass-panel info-card">
+            <p className="eyebrow">About</p>
+            <h3>Preglyph is a public writing layer where only verified humans can publish records.</h3>
+          </article>
+          <article id="my-edit" className="glass-panel info-card">
+            <p className="eyebrow">My Edit</p>
+            <h3>Your writing surface opens after wallet connection and Presence verification.</h3>
+          </article>
+          <article id="connect" className="glass-panel info-card compact-action">
+            <p className="eyebrow">Connect</p>
+            <h3>Connect wallet</h3>
+          </article>
         </section>
       </main>
     </div>
