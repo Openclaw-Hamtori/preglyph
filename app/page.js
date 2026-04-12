@@ -337,15 +337,7 @@ export default function Page() {
               onClick={() => setActiveRecord(record)}
               aria-label={`Open record by ${record.author}`}
             >
-              <div className="slab-meta-top">
-                <strong>{record.author}</strong>
-                <span>{record.time}</span>
-              </div>
               <Inscription text={record.text} size={8} variant="preview" />
-              <div className="slab-meta-bottom">
-                <span>{record.metaLeft}</span>
-                <span>{record.metaRight}</span>
-              </div>
             </button>
           ))}
         </section>
