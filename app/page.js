@@ -365,10 +365,7 @@ export default function Page() {
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
-                <DetailSlab3D />
-                <div className="detail-inscription-overlay">
-                  <Inscription text={activeRecord.text} size={12} variant="detail" />
-                </div>
+                <DetailSlab3D text={activeRecord.text} />
               </div>
             </div>
           </div>

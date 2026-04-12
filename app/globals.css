@@ -553,38 +553,6 @@ time,
   border-radius: 26px;
 }
 
-.detail-inscription-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  transform: perspective(1200px) rotateX(18deg) rotateY(-31deg) rotateZ(8deg) translate3d(14px, -12px, 0);
-  transform-style: preserve-3d;
-}
-
-.detail-inscription-overlay .inscription.detail {
-  width: min(100%, 610px);
-  aspect-ratio: 1 / 1;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.detail-inscription-overlay .inscription.detail::before,
-.detail-inscription-overlay .inscription.detail::after {
-  display: none;
-}
-
-.detail-inscription-overlay .cell {
-  color: rgba(24, 29, 37, 0.78);
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1),
-    0 -1px 0 rgba(17, 22, 30, 0.32);
-}
 
 .detail-copy {
   flex: 1;
