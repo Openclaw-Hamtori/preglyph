@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import DetailSlab3D from './components/DetailSlab3D';
 
 const records = [
   {
@@ -363,8 +364,11 @@ export default function Page() {
               <code>{fakeTxHash(activeRecord.id)}</code>
             </div>
             <div className="detail-body stacked-detail">
-              <div className="detail-slab-wrap full-width">
-                <Inscription text={activeRecord.text} size={12} variant="detail" />
+              <div className="detail-slab-wrap full-width detail-3d-stage">
+                <DetailSlab3D />
+                <div className="detail-inscription-overlay">
+                  <Inscription text={activeRecord.text} size={12} variant="detail" />
+                </div>
               </div>
             </div>
           </div>
