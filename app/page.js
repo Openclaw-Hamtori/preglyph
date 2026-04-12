@@ -335,15 +335,18 @@ function formatRecordedAt(relative) {
     const deltaMs = unit === 'm' ? amount * 60_000 : amount * 3_600_000;
     const recorded = new Date(now.getTime() - deltaMs);
 
-    return new Intl.DateTimeFormat('ko-KR', {
+    const parts = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Asia/Seoul',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).format(recorded);
+    }).formatToParts(recorded);
+
+    const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
   }
 
   return relative;
