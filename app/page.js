@@ -316,13 +316,37 @@ function GlassOrb() {
   return <canvas ref={canvasRef} className="glass-canvas" aria-hidden="true" />;
 }
 
-function fakeTxHash(id) {
-  const hex = Array.from(id)
-    .map((char) => char.codePointAt(0).toString(16).padStart(2, '0'))
+function fakeTxHash(seed) {
+  const hex = Array.from(seed)
+    .map((char) => char.charCodeAt(0).toString(16).padStart(2, '0'))
     .join('')
     .slice(0, 64)
     .padEnd(64, '0');
   return `0x${hex}`;
+}
+
+function formatRecordedAt(relative) {
+  const now = new Date();
+  const parsed = String(relative).match(/^(\d+)(m|h)$/i);
+
+  if (parsed) {
+    const amount = Number(parsed[1]);
+    const unit = parsed[2].toLowerCase();
+    const deltaMs = unit === 'm' ? amount * 60_000 : amount * 3_600_000;
+    const recorded = new Date(now.getTime() - deltaMs);
+
+    return new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: false,
+    }).format(recorded);
+  }
+
+  return relative;
 }
 
 function Inscription({ text, size = 9, variant = 'preview' }) {
@@ -431,7 +455,7 @@ export default function Page() {
               </div>
               <div className="detail-time-block">
                 <p className="eyebrow">Recorded at</p>
-                <span>{activeRecord.time}</span>
+                <span>{formatRecordedAt(activeRecord.time)}</span>
               </div>
             </div>
             <div className="detail-tx glass-subpanel">
@@ -441,13 +465,6 @@ export default function Page() {
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width">
                 <Inscription text={activeRecord.text} size={12} variant="detail" />
-              </div>
-              <div className="detail-copy">
-                <p>{activeRecord.text}</p>
-                <div className="detail-meta">
-                  <span>{activeRecord.metaLeft}</span>
-                  <span>{activeRecord.metaRight}</span>
-                </div>
               </div>
             </div>
           </div>
