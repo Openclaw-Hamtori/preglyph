@@ -51,12 +51,12 @@ function drawBaseMatrix(ctx, text, size) {
       const x = inset + col * cellSize + cellSize / 2;
       const y = inset + row * cellSize + cellSize / 2;
 
-      ctx.fillStyle = 'rgba(11, 18, 28, 0.34)';
-      ctx.beginPath();
-      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (char !== ' ') {
+      if (char === ' ') {
+        ctx.fillStyle = 'rgba(11, 18, 28, 0.34)';
+        ctx.beginPath();
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
         ctx.strokeStyle = 'rgba(215, 228, 245, 0.18)';
         ctx.lineWidth = Math.max(1.5, cellSize * 0.026);
         ctx.strokeText(char, x, y - cellSize * 0.012);
@@ -88,14 +88,16 @@ function drawGlowMatrix(ctx, text, size) {
       const x = inset + col * cellSize + cellSize / 2;
       const y = inset + row * cellSize + cellSize / 2;
 
-      ctx.shadowColor = 'rgba(205, 235, 255, 0.9)';
-      ctx.shadowBlur = Math.max(18, cellSize * 0.2);
-      ctx.fillStyle = 'rgba(190, 226, 255, 0.34)';
-      ctx.beginPath();
-      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (char !== ' ') {
+      if (char === ' ') {
+        ctx.shadowColor = 'rgba(205, 235, 255, 0.9)';
+        ctx.shadowBlur = Math.max(18, cellSize * 0.2);
+        ctx.fillStyle = 'rgba(190, 226, 255, 0.34)';
+        ctx.beginPath();
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.shadowColor = 'rgba(205, 235, 255, 0.9)';
+        ctx.shadowBlur = Math.max(18, cellSize * 0.2);
         ctx.fillStyle = 'rgba(228, 244, 255, 0.74)';
         ctx.fillText(char, x, y - cellSize * 0.012);
       }
@@ -114,7 +116,8 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
   const fontSize = Math.floor(cellSize * 0.6);
 
   const dots = cells
-    .map((_, index) => {
+    .map((char, index) => {
+      if (char !== ' ') return '';
       const row = Math.floor(index / size);
       const col = index % size;
       const x = inset + col * cellSize + cellSize / 2;
