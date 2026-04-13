@@ -262,14 +262,26 @@ function formatRecordedAt(relative) {
 
 function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersion = 0 }) {
   const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size, fontVersion]);
+  const glowTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'glow'), [text, size, fontVersion]);
 
   return (
-    <img
-      className={`inscription ${variant}`}
-      src={textureUrl}
-      alt={`${size} by ${size} inscription preview`}
-      draggable={false}
-    />
+    <span className={`inscription-shell ${variant}`}>
+      <img
+        className={`inscription ${variant}`}
+        src={textureUrl}
+        alt={`${size} by ${size} inscription preview`}
+        draggable={false}
+      />
+      {variant === 'preview' && (
+        <img
+          className="inscription-glow"
+          src={glowTextureUrl}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      )}
+    </span>
   );
 }
 

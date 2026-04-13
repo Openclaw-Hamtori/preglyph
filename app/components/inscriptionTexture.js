@@ -110,7 +110,7 @@ function drawGlowMatrix(ctx, text, size) {
   }
 }
 
-export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
+export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base') {
   const cells = buildMatrix(text, size);
   const viewBox = 1200;
   const inset = viewBox * 0.1;
@@ -118,16 +118,18 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
   const dotRadius = Math.max(2.6, cellSize * 0.055);
   const fontSize = Math.floor(cellSize * 0.56);
 
-  const dots = cells
-    .map((char, index) => {
-      if (char !== ' ') return '';
-      const row = Math.floor(index / size);
-      const col = index % size;
-      const x = inset + col * cellSize + cellSize / 2;
-      const y = inset + row * cellSize + cellSize / 2;
-      return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${dotRadius.toFixed(2)}" fill="rgba(11,18,28,0.34)" />`;
-    })
-    .join('');
+  const dots = mode === 'glow'
+    ? ''
+    : cells
+        .map((char, index) => {
+          if (char !== ' ') return '';
+          const row = Math.floor(index / size);
+          const col = index % size;
+          const x = inset + col * cellSize + cellSize / 2;
+          const y = inset + row * cellSize + cellSize / 2;
+          return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${dotRadius.toFixed(2)}" fill="rgba(11,18,28,0.34)" />`;
+        })
+        .join('');
 
   const glyphs = cells
     .map((char, index) => {
@@ -140,11 +142,16 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-      return [
-        `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(6,12,18,0.96)">${safeChar}</text>`,
-      ].join('');
+      if (mode === 'glow') {
+        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(214,236,255,0.92)" filter="url(#preglyphGlow)">${safeChar}</text>`;
+      }
+      return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(6,12,18,0.96)">${safeChar}</text>`;
     })
     .join('');
+
+  const backgroundRect = mode === 'glow'
+    ? ''
+    : `<rect width="${viewBox}" height="${viewBox}" fill="url(#preglyphBg)" />`;
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBox} ${viewBox}" preserveAspectRatio="none">
@@ -154,8 +161,12 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
           <stop offset="54%" stop-color="#37475d" />
           <stop offset="100%" stop-color="#2b3747" />
         </linearGradient>
+        <filter id="preglyphGlow" x="-24%" y="-24%" width="148%" height="148%">
+          <feGaussianBlur stdDeviation="10" result="blur" />
+          <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        </filter>
       </defs>
-      <rect width="${viewBox}" height="${viewBox}" fill="url(#preglyphBg)" />
+      ${backgroundRect}
       ${dots}
       ${glyphs}
     </svg>
