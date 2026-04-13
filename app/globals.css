@@ -371,24 +371,24 @@ time,
 
 .inscription-hover-fill {
   opacity: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.66s ease;
 }
 
 .inscription-glow {
   opacity: 0;
   transform: scale(1.006);
-  transition: opacity 0.68s ease;
+  transition: opacity 0.88s ease;
   mix-blend-mode: screen;
 }
 
 .slab-button:hover .inscription-hover-fill,
 .slab-button:focus-visible .inscription-hover-fill {
-  opacity: 0.76;
+  opacity: 0.84;
 }
 
 .slab-button:hover .inscription-glow,
 .slab-button:focus-visible .inscription-glow {
-  opacity: 0.18;
+  opacity: 0.2;
 }
 
 .inscription.preview {
