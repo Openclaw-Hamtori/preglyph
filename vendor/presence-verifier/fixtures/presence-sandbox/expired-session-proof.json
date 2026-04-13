@@ -1,0 +1,66 @@
+{
+  "name": "expired-session-proof",
+  "protocolVersion": "v0",
+  "category": "freshness",
+  "description": "Valid proof against an already expired hydrated session context.",
+  "signingSeed": "sandbox_seed_123",
+  "proof": {
+    "type": "presence2.signed_proof",
+    "version": 1,
+    "key": {
+      "iss": "p2iss_7186bc78d91a999b68bfa540",
+      "attestation_capable": false,
+      "attestation": {
+        "type": "presence2.key_attestation_envelope",
+        "version": 1,
+        "format": "P2_SIGNED_KEY_ASSERTION_V1",
+        "claims": {
+          "type": "presence2.key_attestation",
+          "version": 1,
+          "session_id": "sess_123",
+          "request_id": "handle_123",
+          "flow_type": "verify",
+          "service_id": "noctu",
+          "installation_id": "p2i_installation_123",
+          "iss": "p2iss_7186bc78d91a999b68bfa540",
+          "nonce": "nonce_123",
+          "endpoint_ref": "verify-proof",
+          "auth_context": "service-auth-context",
+          "attestation_capable": false,
+          "issued_at": 1712563200000
+        },
+        "signature": {
+          "algorithm": "P2_SEED_SHA256",
+          "value": "d69a57c4d62e12f8d4ef3a18302bc1f043a1c68cbc50fe8905aba8f803011993"
+        }
+      }
+    },
+    "claims": {
+      "type": "presence2.proof_claims",
+      "version": 1,
+      "session_id": "sess_123",
+      "request_id": "handle_123",
+      "flow_type": "verify",
+      "service_id": "noctu",
+      "installation_id": "p2i_installation_123",
+      "iss": "p2iss_7186bc78d91a999b68bfa540",
+      "nonce": "nonce_123",
+      "presence_result": "pass"
+    },
+    "signature": {
+      "algorithm": "P2_SEED_SHA256",
+      "value": "cbc24703c4e7a80cae463ea13016adabbd84eb0be0dce90c9e576b3df0cbb29c"
+    }
+  },
+  "verifierInput": {
+    "expected": {
+      "protocolVersion": "v0",
+      "serviceId": "noctu",
+      "sessionExpiresAtMs": 1
+    }
+  },
+  "expected": {
+    "verdict": "expired",
+    "reasonCode": "ERR_EXPIRED"
+  }
+}

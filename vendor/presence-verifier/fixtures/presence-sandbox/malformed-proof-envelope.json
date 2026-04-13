@@ -1,0 +1,26 @@
+{
+  "name": "malformed-proof-envelope",
+  "protocolVersion": "v0",
+  "category": "structural_failure",
+  "description": "Malformed proof object missing canonical signed proof envelope fields.",
+  "proof": {
+    "type": "presence2.signed_proof",
+    "version": 1,
+    "claims": {
+      "type": "presence2.proof_claims",
+      "version": 1,
+      "session_id": "sess_123",
+      "request_id": "handle_123",
+      "flow_type": "verify",
+      "service_id": "noctu",
+      "installation_id": "p2i_installation_123",
+      "iss": "p2iss_7186bc78d91a999b68bfa540",
+      "nonce": "nonce_123",
+      "presence_result": "pass"
+    }
+  },
+  "expected": {
+    "verdict": "invalid",
+    "reasonCode": "ERR_PROOF_MALFORMED"
+  }
+}

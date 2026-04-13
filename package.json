@@ -13,7 +13,7 @@
     "test:e2e:local": "node scripts/test-local-e2e.js"
   },
   "dependencies": {
-    "@presence/verifier-sdk": "file:../presence-auth/packages/presence-verifier",
+    "@presence/verifier-sdk": "file:vendor/presence-verifier",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "ethers": "^6.15.0",

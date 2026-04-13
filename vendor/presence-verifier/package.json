@@ -1,0 +1,49 @@
+{
+  "name": "@presence/verifier-sdk",
+  "version": "0.1.0",
+  "description": "Presence verifier SDK for proof verification, sandbox fixtures, and compatibility testing",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/verifier-sdk/index.js",
+  "types": "dist/verifier-sdk/index.d.ts",
+  "files": [
+    "dist",
+    "fixtures",
+    "templates",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/verifier-sdk/index.d.ts",
+      "default": "./dist/verifier-sdk/index.js"
+    },
+    "./sandbox": {
+      "types": "./dist/verifier-sdk/sandbox.d.ts",
+      "default": "./dist/verifier-sdk/sandbox.js"
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "check:root-import": "npm run build && node -e \"const pkg = require('@presence/verifier-sdk'); if (!pkg || typeof pkg.verifyPresence !== 'function') { throw new Error('Root package import did not expose verifyPresence'); } console.log('root import ok');\"",
+    "check:sandbox-import": "npm run build && node -e \"const sandbox = require('@presence/verifier-sdk/sandbox'); if (!sandbox || typeof sandbox.loadPresenceSandboxFixture !== 'function') { throw new Error('Sandbox subpath import did not expose loadPresenceSandboxFixture'); } console.log('sandbox import ok');\"",
+    "check:starter": "node --check templates/minimal-express-server.cjs && node -e \"JSON.parse(require('node:fs').readFileSync('templates/verify-request.example.json', 'utf8')); console.log('starter assets ok');\"",
+    "example": "npm run build && node examples/quickstart.cjs",
+    "pack:dry-run": "npm run build && npm pack --dry-run",
+    "verify:package": "npm run build && npm run check:root-import && npm run check:sandbox-import && npm run check:starter && npm run example && npm pack --dry-run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "typescript": "^5.8.3"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "engines": {
+    "node": ">=22.11.0"
+  }
+}

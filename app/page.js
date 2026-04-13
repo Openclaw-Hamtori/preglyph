@@ -8,6 +8,9 @@ import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 
 const CLIENT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_ID || 31337);
 const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS || '';
+const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://127.0.0.1:8545';
+const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
+const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
 const ABOUT_COPY =
   'Preglyph is a public archive where only Presence-passed humans can leave short permanent records on Ethereum.';
@@ -101,6 +104,8 @@ export default function Page() {
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [claimState, setClaimState] = useState({ loading: false, message: '' });
+  const [presenceRequest, setPresenceRequest] = useState(null);
+  const [liveProofText, setLiveProofText] = useState('');
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
 
@@ -195,10 +200,29 @@ export default function Page() {
     if (Number(networkInfo.chainId) === CLIENT_CHAIN_ID) return;
 
     const chainHex = `0x${CLIENT_CHAIN_ID.toString(16)}`;
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: chainHex }],
-    });
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: chainHex }],
+      });
+    } catch (error) {
+      if (error?.code !== 4902) throw error;
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: chainHex,
+            chainName: CLIENT_CHAIN_NAME,
+            rpcUrls: [CLIENT_RPC_URL],
+            nativeCurrency: {
+              name: 'Ether',
+              symbol: CLIENT_CURRENCY_SYMBOL,
+              decimals: 18,
+            },
+          },
+        ],
+      });
+    }
   }
 
   async function handleConnectWallet() {
@@ -239,6 +263,51 @@ export default function Page() {
       setClaimState({ loading: false, message: 'Presence pass verified. Writing access is now unlocked.' });
     } catch (error) {
       setClaimState({ loading: false, message: error.message || 'Presence claim failed.' });
+    }
+  }
+
+  async function handleCreatePresenceRequest() {
+    if (!walletAddress) {
+      setClaimState({ loading: false, message: 'Connect a wallet first.' });
+      return;
+    }
+
+    try {
+      setClaimState({ loading: true, message: 'Creating Presence request…' });
+      const response = await fetch('/api/presence/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Failed to create Presence request.');
+      setPresenceRequest(payload.request);
+      setClaimState({ loading: false, message: 'Presence request created. Submit a real proof JSON to complete live verification.' });
+    } catch (error) {
+      setClaimState({ loading: false, message: error.message || 'Failed to create Presence request.' });
+    }
+  }
+
+  async function handleVerifyLivePresence() {
+    if (!walletAddress || !presenceRequest) {
+      setClaimState({ loading: false, message: 'Create a Presence request first.' });
+      return;
+    }
+
+    try {
+      const proof = JSON.parse(liveProofText);
+      setClaimState({ loading: true, message: 'Verifying Presence proof…' });
+      const response = await fetch('/api/presence/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress, requestId: presenceRequest.requestId, proof }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Live Presence verification failed.');
+      await loadProfile(walletAddress);
+      setClaimState({ loading: false, message: 'Live Presence verification succeeded. Writing access is now unlocked.' });
+    } catch (error) {
+      setClaimState({ loading: false, message: error.message || 'Live Presence verification failed.' });
     }
   }
 
@@ -419,11 +488,29 @@ export default function Page() {
                 </span>
               </div>
             </div>
-            <div className="profile-actions">
+            <div className="profile-actions wrap-actions">
               <button type="button" className="connect-chip" disabled={claimState.loading || !walletAddress} onClick={handlePresenceClaim}>
                 {claimState.loading ? 'Verifying…' : 'Pass Presence sandbox'}
               </button>
+              <button type="button" className="ghost-chip" disabled={claimState.loading || !walletAddress} onClick={handleCreatePresenceRequest}>
+                Create live Presence request
+              </button>
             </div>
+            {presenceRequest ? (
+              <div className="live-presence-panel glass-subpanel">
+                <p className="eyebrow">Live Presence request</p>
+                <code>{presenceRequest.requestId}</code>
+                <span>nonce {presenceRequest.nonce}</span>
+                <textarea
+                  value={liveProofText}
+                  onChange={(event) => setLiveProofText(event.target.value)}
+                  placeholder="Paste a real Presence signed proof JSON here after completing the mobile flow."
+                />
+                <button type="button" className="connect-chip" onClick={handleVerifyLivePresence}>
+                  Verify live proof
+                </button>
+              </div>
+            ) : null}
             <div className="profile-records">
               <div className="section-row">
                 <h4>My writings</h4>

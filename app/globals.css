@@ -707,6 +707,10 @@ time,
   gap: 12px;
 }
 
+.wrap-actions {
+  flex-wrap: wrap;
+}
+
 .floating-panel-copy,
 .empty-state p,
 .hero-text {
@@ -744,6 +748,37 @@ time,
   border: 1px solid rgba(158, 184, 217, 0.12);
   background: rgba(16, 27, 42, 0.72);
   cursor: pointer;
+}
+
+.live-presence-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+}
+
+.live-presence-panel code {
+  overflow-wrap: anywhere;
+  color: rgba(230, 239, 255, 0.92);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.live-presence-panel span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.live-presence-panel textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(168, 193, 225, 0.14);
+  background: rgba(12, 22, 38, 0.84);
+  color: var(--text);
+  font: inherit;
 }
 
 .composer {

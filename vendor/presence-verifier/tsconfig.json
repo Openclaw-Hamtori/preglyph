@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "sourceMap": false,
+    "emitDeclarationOnly": false,
+    "outDir": "dist",
+    "rootDir": "../../src",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2019",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "../../src/verifier-sdk/**/*.ts"
+  ],
+  "exclude": [
+    "../../**/__tests__/**",
+    "../../node_modules/**",
+    "../../ios/**",
+    "../../android/**"
+  ]
+}

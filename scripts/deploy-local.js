@@ -24,6 +24,9 @@ async function main() {
   envContent = upsertEnvValue(envContent, 'PREGLYPH_RPC_URL', 'http://127.0.0.1:8545');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_CHAIN_ID', '31337');
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CHAIN_ID', '31337');
+  envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL', 'http://127.0.0.1:8545');
+  envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CHAIN_NAME', 'Preglyph Testchain');
+  envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL', 'ETH');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'PREGLYPH_ADMIN_PRIVATE_KEY', LOCAL_ADMIN_PRIVATE_KEY);

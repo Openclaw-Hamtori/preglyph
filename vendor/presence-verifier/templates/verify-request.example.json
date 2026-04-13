@@ -1,0 +1,61 @@
+{
+  "sessionId": "sess_123",
+  "requestId": "handle_123",
+  "flowType": "verify",
+  "expectedNonce": "nonce_123",
+  "sessionExpiresAtMs": 4102444800000,
+  "submitTarget": {
+    "endpoint_ref": "epref_demo_123",
+    "auth_context": "ctx_demo_123"
+  },
+  "proof": {
+    "type": "presence2.signed_proof",
+    "version": 1,
+    "key": {
+      "iss": "p2iss_example",
+      "public_key": "replace-with-real-public-key-if-you-use-one",
+      "attestation_capable": false,
+      "attestation": {
+        "type": "presence2.key_attestation_envelope",
+        "version": 1,
+        "format": "P2_SIGNED_KEY_ASSERTION_V1",
+        "claims": {
+          "type": "presence2.key_attestation",
+          "version": 1,
+          "session_id": "sess_123",
+          "request_id": "handle_123",
+          "flow_type": "verify",
+          "service_id": "example-service",
+          "installation_id": "p2i_installation_123",
+          "iss": "p2iss_example",
+          "public_key": "replace-with-real-public-key-if-you-use-one",
+          "nonce": "nonce_123",
+          "endpoint_ref": "epref_demo_123",
+          "auth_context": "ctx_demo_123",
+          "attestation_capable": false,
+          "issued_at": 4102444700000
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "value": "replace-with-real-attestation-signature"
+        }
+      }
+    },
+    "claims": {
+      "type": "presence2.proof_claims",
+      "version": 1,
+      "session_id": "sess_123",
+      "request_id": "handle_123",
+      "flow_type": "verify",
+      "service_id": "example-service",
+      "installation_id": "p2i_installation_123",
+      "iss": "p2iss_example",
+      "nonce": "nonce_123",
+      "presence_result": "pass"
+    },
+    "signature": {
+      "algorithm": "ed25519",
+      "value": "replace-with-real-proof-signature"
+    }
+  }
+}
