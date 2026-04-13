@@ -5,14 +5,26 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "chain": "hardhat node",
+    "compile": "hardhat compile",
+    "test:contracts": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy-local.js --network localhost",
+    "test:e2e:local": "node scripts/test-local-e2e.js"
   },
   "dependencies": {
+    "@presence/verifier-sdk": "file:../presence-auth/packages/presence-verifier",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "ethers": "^6.15.0",
     "next": "15.5.15",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "three": "^0.183.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "dotenv": "^17.2.3",
+    "hardhat": "^2.26.3"
   }
 }

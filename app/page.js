@@ -1,263 +1,52 @@
 'use client';
 
+import { BrowserProvider, Contract } from 'ethers';
 import { useEffect, useMemo, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
+import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 
-const records = [
-  {
-    id: 'en-1',
-    author: 'chae.eth',
-    time: '12m',
-    title: 'Permanent public writing changes how carefully people speak.',
-    text: 'Permanent public writing changes how carefully people speak. When deletion is not the default, language becomes slower, clearer, and more accountable.',
-    metaLeft: 'Ethereum mainnet',
-    metaRight: 'reply · cite',
-  },
-  {
-    id: 'en-2',
-    author: '0x8a2...4af1',
-    time: '34m',
-    title: 'Presence should unlock the right to leave durable public marks.',
-    text: 'Presence should unlock the right to leave durable public marks. It should not become the social network itself. Wallet is identity and Presence is the gate.',
-    metaLeft: 'Presence-gated',
-    metaRight: 'open',
-  },
-  {
-    id: 'ko-1',
-    author: 'han.eth',
-    time: '51m',
-    title: '지워지지 않는 기록은 말을 더 신중하게 만든다.',
-    text: '지워지지 않는 기록은 말을 더 신중하게 만든다. 프레그리프는 빠른 소비보다 오래 남는 문장을 위한 공간이어야 한다.',
-    metaLeft: 'Korean record',
-    metaRight: 'open',
-  },
-  {
-    id: 'ko-2',
-    author: 'seoul.eth',
-    time: '1h',
-    title: '지갑은 계정이고 프레즌스는 쓰기 권한이다.',
-    text: '지갑은 계정이고 프레즌스는 쓰기 권한이다. 둘의 역할이 분리될수록 제품은 더 단순하고 강해진다.',
-    metaLeft: 'wallet id',
-    metaRight: 'cite',
-  },
-  {
-    id: 'zh-1',
-    author: 'hanzi.eth',
-    time: '1h',
-    title: '公开且不可删除的记录会改变写作方式。',
-    text: '公开且不可删除的记录会改变写作方式。写下的每一句话都会更慢，更清楚，也更负责任。',
-    metaLeft: 'Chinese record',
-    metaRight: 'reply',
-  },
-  {
-    id: 'zh-2',
-    author: '0x77...be1',
-    time: '1h',
-    title: '身份来自钱包，写作权来自通过验证的人类存在。',
-    text: '身份来自钱包，写作权来自通过验证的人类存在。记录留在链上，而不是停留在可删除的数据库里。',
-    metaLeft: 'verified human',
-    metaRight: 'open',
-  },
-  {
-    id: 'fr-1',
-    author: 'paris.eth',
-    time: '2h',
-    title: 'Un écrit public et durable change le ton de la parole.',
-    text: 'Un écrit public et durable change le ton de la parole. Quand rien ne disparaît facilement, chaque phrase porte davantage de poids.',
-    metaLeft: 'French record',
-    metaRight: 'quote',
-  },
-  {
-    id: 'fr-2',
-    author: '0x19...fa2',
-    time: '2h',
-    title: 'Le produit doit ressembler à une chambre calme, pas à un flux bruyant.',
-    text: 'Le produit doit ressembler à une chambre calme, pas à un flux bruyant. On vient pour inscrire, pas pour faire défiler sans fin.',
-    metaLeft: 'quiet interface',
-    metaRight: 'open',
-  },
-  {
-    id: 'ar-1',
-    author: 'nour.eth',
-    time: '3h',
-    title: 'الكتابة العامة الدائمة تجعل الكلمات أكثر مسؤولية.',
-    text: 'الكتابة العامة الدائمة تجعل الكلمات أكثر مسؤولية. عندما يبقى الأثر، تصبح الجملة أهدأ وأكثر وضوحًا.',
-    metaLeft: 'Arabic record',
-    metaRight: 'reply',
-  },
-  {
-    id: 'ar-2',
-    author: '0x55...c21',
-    time: '3h',
-    title: 'المحفظة هوية، والحضور البشري هو باب الكتابة.',
-    text: 'المحفظة هوية، والحضور البشري هو باب الكتابة. السجل الحقيقي يجب أن يبقى على السلسلة لا في قاعدة بيانات قابلة للمحو.',
-    metaLeft: 'verified gate',
-    metaRight: 'open',
-  },
-  {
-    id: 'pt-1',
-    author: 'rio.eth',
-    time: '4h',
-    title: 'Um registro público e durável muda a forma como as pessoas escrevem.',
-    text: 'Um registro público e durável muda a forma como as pessoas escrevem. O texto fica mais claro, mais lento e mais responsável.',
-    metaLeft: 'Portuguese record',
-    metaRight: 'reply',
-  },
-  {
-    id: 'pt-2',
-    author: '0x24...de4',
-    time: '4h',
-    title: 'Carteira é identidade. Presence é o direito de escrever.',
-    text: 'Carteira é identidade. Presence é o direito de escrever. O produto funciona melhor quando essas camadas continuam separadas.',
-    metaLeft: 'wallet + gate',
-    metaRight: 'cite',
-  },
-  {
-    id: 'es-1',
-    author: 'sol.eth',
-    time: '5h',
-    title: 'Un registro público permanente hace que la escritura sea más cuidadosa.',
-    text: 'Un registro público permanente hace que la escritura sea más cuidadosa. Si el texto permanece, el lenguaje cambia de ritmo.',
-    metaLeft: 'Spanish record',
-    metaRight: 'open',
-  },
-  {
-    id: 'es-2',
-    author: '0x90...aa7',
-    time: '5h',
-    title: 'No es una red para ruido; es una capa para memoria pública humana.',
-    text: 'No es una red para ruido; es una capa para memoria pública humana. Cada inscripción debe sentirse deliberada y atribuible.',
-    metaLeft: 'public memory',
-    metaRight: 'reply',
-  },
-  {
-    id: 'de-1',
-    author: 'berlin.eth',
-    time: '6h',
-    title: 'Dauerhafte öffentliche Texte verändern die Art zu sprechen.',
-    text: 'Dauerhafte öffentliche Texte verändern die Art zu sprechen. Wenn Worte bleiben, werden sie präziser und verantwortlicher.',
-    metaLeft: 'German record',
-    metaRight: 'open',
-  },
-  {
-    id: 'de-2',
-    author: '0x31...ef8',
-    time: '6h',
-    title: 'Eine ruhige Oberfläche macht den Akt des Schreibens wertvoller.',
-    text: 'Eine ruhige Oberfläche macht den Akt des Schreibens wertvoller. Nicht Scrollen, sondern Einschreiben sollte sich zentral anfühlen.',
-    metaLeft: 'quiet surface',
-    metaRight: 'quote',
-  },
-  {
-    id: 'ja-1',
-    author: 'tokyo.eth',
-    time: '7h',
-    title: '消えない公開記録は、言葉をもっと慎重にする。',
-    text: '消えない公開記録は、言葉をもっと慎重にする。プレグリフは速い消費ではなく、残る文章のための場所であるべきだ。',
-    metaLeft: 'Japanese record',
-    metaRight: 'open',
-  },
-  {
-    id: 'ja-2',
-    author: '0x72...bc0',
-    time: '7h',
-    title: 'ウォレットは身元であり、Presenceは書く権利である。',
-    text: 'ウォレットは身元であり、Presenceは書く権利である。この二つの役割が分かれているほど、体験は明確になる。',
-    metaLeft: 'wallet identity',
-    metaRight: 'cite',
-  },
-  {
-    id: 'hi-1',
-    author: 'delhi.eth',
-    time: '8h',
-    title: 'स्थायी सार्वजनिक लेखन भाषा को अधिक जिम्मेदार बनाता है।',
-    text: 'स्थायी सार्वजनिक लेखन भाषा को अधिक जिम्मेदार बनाता है। जब शब्द टिकते हैं, तो वाक्य अधिक साफ और अधिक सोच-समझकर लिखे जाते हैं।',
-    metaLeft: 'Hindi record',
-    metaRight: 'open',
-  },
-  {
-    id: 'hi-2',
-    author: '0x13...f20',
-    time: '8h',
-    title: 'वॉलेट पहचान है, और Presence लिखने का अधिकार खोलता है।',
-    text: 'वॉलेट पहचान है, और Presence लिखने का अधिकार खोलता है। रिकॉर्ड ब्लॉकचेन पर रहना चाहिए, किसी मिटने योग्य डेटाबेस में नहीं।',
-    metaLeft: 'verified writing',
-    metaRight: 'reply',
-  },
-  {
-    id: 'ru-1',
-    author: 'moscow.eth',
-    time: '9h',
-    title: 'Публичная неизменяемая запись меняет ритм речи.',
-    text: 'Публичная неизменяемая запись меняет ритм речи. Когда текст остаётся, каждая фраза становится осторожнее и яснее.',
-    metaLeft: 'Russian record',
-    metaRight: 'open',
-  },
-  {
-    id: 'ru-2',
-    author: '0x64...d92',
-    time: '9h',
-    title: 'Интерфейс должен быть тихим, чтобы запись ощущалась важной.',
-    text: 'Интерфейс должен быть тихим, чтобы запись ощущалась важной. Это не место для шумного потребления, а слой для долговечной памяти.',
-    metaLeft: 'quiet archive',
-    metaRight: 'cite',
-  },
-  {
-    id: 'tr-1',
-    author: 'istanbul.eth',
-    time: '10h',
-    title: 'Kalıcı kamusal kayıt yazıyı daha dikkatli hale getirir.',
-    text: 'Kalıcı kamusal kayıt yazıyı daha dikkatli hale getirir. Metin silinmediğinde, her cümle daha net ve daha sorumlu olur.',
-    metaLeft: 'Turkish record',
-    metaRight: 'open',
-  },
-  {
-    id: 'tr-2',
-    author: '0x88...ab3',
-    time: '10h',
-    title: 'Cüzdan kimliktir, Presence ise yazma kapısını açar.',
-    text: 'Cüzdan kimliktir, Presence ise yazma kapısını açar. Ürün, bu katmanlar ayrı kaldığında daha anlaşılır hale gelir.',
-    metaLeft: 'wallet gate',
-    metaRight: 'reply',
-  },
-];
+const CLIENT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_ID || 31337);
+const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS || '';
+const MAX_RECORD_LENGTH = 280;
+const ABOUT_COPY =
+  'Preglyph is a public archive where only Presence-passed humans can leave short permanent records on Ethereum.';
 
-
-function fakeTxHash(seed) {
-  const hex = Array.from(seed)
-    .map((char) => char.charCodeAt(0).toString(16).padStart(2, '0'))
-    .join('')
-    .slice(0, 64)
-    .padEnd(64, '0');
-  return `0x${hex}`;
+function truncateAddress(address) {
+  if (!address) return '';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function formatRecordedAt(relative) {
-  const now = new Date();
-  const parsed = String(relative).match(/^(\d+)(m|h)$/i);
-
-  if (parsed) {
-    const amount = Number(parsed[1]);
-    const unit = parsed[2].toLowerCase();
-    const deltaMs = unit === 'm' ? amount * 60_000 : amount * 3_600_000;
-    const recorded = new Date(now.getTime() - deltaMs);
-
-    const parts = new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'Asia/Seoul',
+function formatRecordedAt(timestampOrRelative) {
+  if (!timestampOrRelative) return '—';
+  if (typeof timestampOrRelative === 'number') {
+    return new Intl.DateTimeFormat('en-GB', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).formatToParts(recorded);
-
-    const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
-    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+    }).format(new Date(timestampOrRelative * 1000));
   }
+  return timestampOrRelative;
+}
 
-  return relative;
+function relativeTimeFromUnix(timestamp) {
+  if (!timestamp) return 'pending';
+  const diffSeconds = Math.max(1, Math.floor(Date.now() / 1000 - timestamp));
+  if (diffSeconds < 60) return `${diffSeconds}s`;
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m`;
+  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h`;
+  return `${Math.floor(diffSeconds / 86400)}d`;
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10.5 4a6.5 6.5 0 1 0 4.053 11.58l3.433 3.433 1.414-1.414-3.433-3.433A6.5 6.5 0 0 0 10.5 4Zm0 2a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z" fill="currentColor" />
+    </svg>
+  );
 }
 
 function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersion = 0 }) {
@@ -275,34 +64,92 @@ function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersio
       />
       {variant === 'preview' && (
         <>
-          <img
-            className="inscription-hover-fill"
-            src={hoverFillTextureUrl}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-          />
-          <img
-            className="inscription-glow"
-            src={glowTextureUrl}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-          />
+          <img className="inscription-hover-fill" src={hoverFillTextureUrl} alt="" aria-hidden="true" draggable={false} />
+          <img className="inscription-glow" src={glowTextureUrl} alt="" aria-hidden="true" draggable={false} />
         </>
       )}
     </span>
   );
 }
 
+function Panel({ title, body, onClose }) {
+  return (
+    <div className="floating-panel glass-panel">
+      <div className="floating-panel-head">
+        <div>
+          <p className="eyebrow">Preglyph</p>
+          <h3>{title}</h3>
+        </div>
+        <button type="button" className="ghost-chip" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <p className="floating-panel-copy">{body}</p>
+    </div>
+  );
+}
+
 export default function Page() {
+  const [records, setRecords] = useState([]);
+  const [network, setNetwork] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [profile, setProfile] = useState(null);
+  const [appStatus, setAppStatus] = useState('');
+  const [searchTxHash, setSearchTxHash] = useState('');
+  const [searchStatus, setSearchStatus] = useState('');
+  const [composeText, setComposeText] = useState('');
+  const [composeState, setComposeState] = useState({ loading: false, message: '' });
+  const [claimState, setClaimState] = useState({ loading: false, message: '' });
   const [fontVersion, setFontVersion] = useState(0);
+  const [activePanel, setActivePanel] = useState('');
+
+  const isWriter = Boolean(profile?.presence?.passed && profile?.onchainApproved);
+  const profileRecords = profile?.records || [];
+
+  async function loadRecords() {
+    try {
+      const response = await fetch('/api/records', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Failed to load records.');
+      setRecords(payload.records || []);
+      setNetwork(payload.network || null);
+      setAppStatus('');
+    } catch (error) {
+      setRecords([]);
+      setAppStatus(error.message);
+    }
+  }
+
+  async function loadProfile(address) {
+    if (!address) {
+      setProfile(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Failed to load profile.');
+      setProfile(payload.profile);
+    } catch (error) {
+      setProfile(null);
+      setAppStatus(error.message);
+    }
+  }
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') setActiveRecord(null);
+      if (event.key === 'Escape') {
+        setActiveRecord(null);
+        setActivePanel('');
+      }
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
@@ -318,6 +165,148 @@ export default function Page() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!window.ethereum) return undefined;
+
+    const handleAccountsChanged = (accounts) => {
+      const nextAddress = accounts?.[0] || '';
+      setWalletAddress(nextAddress);
+      setActivePanel(nextAddress ? 'profile' : '');
+      loadProfile(nextAddress);
+    };
+
+    const handleChainChanged = () => {
+      loadRecords();
+      if (walletAddress) loadProfile(walletAddress);
+    };
+
+    window.ethereum.request({ method: 'eth_accounts' }).then(handleAccountsChanged).catch(() => {});
+    window.ethereum.on?.('accountsChanged', handleAccountsChanged);
+    window.ethereum.on?.('chainChanged', handleChainChanged);
+
+    return () => {
+      window.ethereum.removeListener?.('accountsChanged', handleAccountsChanged);
+      window.ethereum.removeListener?.('chainChanged', handleChainChanged);
+    };
+  }, [walletAddress]);
+
+  async function ensureWalletOnExpectedChain(provider) {
+    const networkInfo = await provider.getNetwork();
+    if (Number(networkInfo.chainId) === CLIENT_CHAIN_ID) return;
+
+    const chainHex = `0x${CLIENT_CHAIN_ID.toString(16)}`;
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: chainHex }],
+    });
+  }
+
+  async function handleConnectWallet() {
+    if (!window.ethereum) {
+      setAppStatus('MetaMask is required for wallet connect.');
+      return;
+    }
+
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const nextAddress = accounts?.[0] || '';
+      const provider = new BrowserProvider(window.ethereum);
+      await ensureWalletOnExpectedChain(provider);
+      setWalletAddress(nextAddress);
+      setActivePanel('profile');
+      await loadProfile(nextAddress);
+    } catch (error) {
+      setAppStatus(error.message || 'Wallet connection failed.');
+    }
+  }
+
+  async function handlePresenceClaim() {
+    if (!walletAddress) {
+      setClaimState({ loading: false, message: 'Connect a wallet first.' });
+      return;
+    }
+
+    try {
+      setClaimState({ loading: true, message: 'Verifying Presence sandbox proof…' });
+      const response = await fetch('/api/presence/claim-sandbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: walletAddress }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Presence claim failed.');
+      await loadProfile(walletAddress);
+      setClaimState({ loading: false, message: 'Presence pass verified. Writing access is now unlocked.' });
+    } catch (error) {
+      setClaimState({ loading: false, message: error.message || 'Presence claim failed.' });
+    }
+  }
+
+  async function handleSearch(event) {
+    event.preventDefault();
+    if (!searchTxHash.trim()) {
+      setSearchStatus('Enter a transaction hash.');
+      return;
+    }
+
+    try {
+      setSearchStatus('Searching transaction…');
+      const response = await fetch(`/api/records/search?txHash=${encodeURIComponent(searchTxHash.trim())}`, {
+        cache: 'no-store',
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Transaction not found.');
+      setActiveRecord(payload.record);
+      setSearchStatus('Record found.');
+    } catch (error) {
+      setSearchStatus(error.message || 'Transaction search failed.');
+    }
+  }
+
+  async function handleComposeSubmit(event) {
+    event.preventDefault();
+    if (!window.ethereum) {
+      setComposeState({ loading: false, message: 'MetaMask is required to write.' });
+      return;
+    }
+    if (!walletAddress) {
+      setComposeState({ loading: false, message: 'Connect a wallet first.' });
+      return;
+    }
+    if (!isWriter) {
+      setComposeState({ loading: false, message: 'Only Presence-passed wallets can write.' });
+      return;
+    }
+    if (!CLIENT_CONTRACT_ADDRESS) {
+      setComposeState({ loading: false, message: 'Contract address is missing. Run the deploy step first.' });
+      return;
+    }
+
+    const content = composeText.trim();
+    if (!content) {
+      setComposeState({ loading: false, message: 'Write something first.' });
+      return;
+    }
+
+    try {
+      setComposeState({ loading: true, message: 'Preparing transaction…' });
+      const provider = new BrowserProvider(window.ethereum);
+      await ensureWalletOnExpectedChain(provider);
+      const signer = await provider.getSigner();
+      const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
+      const tx = await contract.writeRecord(content);
+      setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
+      const receipt = await tx.wait();
+      await Promise.all([loadRecords(), loadProfile(walletAddress)]);
+      setComposeText('');
+      setSearchTxHash(receipt.hash);
+      setComposeState({ loading: false, message: `Record confirmed onchain: ${receipt.hash}` });
+      setSearchStatus('Latest record transaction is ready to inspect.');
+    } catch (error) {
+      setComposeState({ loading: false, message: error.reason || error.shortMessage || error.message || 'Write failed.' });
+    }
+  }
+
   return (
     <div className="page-shell">
       <header className="topbar">
@@ -329,30 +318,180 @@ export default function Page() {
           </span>
         </a>
 
-        <div className="nav">
-          <span className="nav-note">Human-made permanent records</span>
-          <a className="connect-chip" href="#connect">Connect</a>
+        <form className="search-shell" onSubmit={handleSearch}>
+          <label className="search-field" aria-label="Search transaction">
+            <SearchIcon />
+            <input
+              type="text"
+              value={searchTxHash}
+              onChange={(event) => setSearchTxHash(event.target.value)}
+              placeholder="Search transaction hash"
+            />
+          </label>
+          <button type="submit" className="ghost-chip">
+            Search
+          </button>
+        </form>
+
+        <div className="nav nav-actions">
+          <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'about' ? '' : 'about')}>
+            About
+          </button>
+          <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'how' ? '' : 'how')}>
+            How it works
+          </button>
+          {walletAddress ? (
+            <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'profile' ? '' : 'profile')}>
+              Profile
+            </button>
+          ) : (
+            <button type="button" className="connect-chip" onClick={handleConnectWallet}>
+              Connect
+            </button>
+          )}
         </div>
       </header>
 
       <main id="top" className="main-layout">
-        <section className="slab-grid" aria-label="Public record slabs">
-          {records.map((record) => (
-            <button
-              key={record.id}
-              type="button"
-              className="slab-button"
-              onClick={() => setActiveRecord(record)}
-              aria-label={`Open record by ${record.author}`}
-            >
-              <Inscription text={record.text} size={MATRIX_SIZE} variant="preview" fontVersion={fontVersion} />
-            </button>
-          ))}
+        <section className="hero-strip glass-panel">
+          <div>
+            <p className="eyebrow">Ethereum source of truth</p>
+            <h1>Human-made permanent records.</h1>
+            <p className="hero-text">{ABOUT_COPY}</p>
+          </div>
+          <div className="hero-stats">
+            <div className="stat-card glass-subpanel">
+              <span className="eyebrow">Network</span>
+              <strong>{network ? `Chain ${network.chainId}` : 'Offline'}</strong>
+              <span>{network ? `Block ${network.blockNumber}` : 'Deploy a contract to begin.'}</span>
+            </div>
+            <div className="stat-card glass-subpanel">
+              <span className="eyebrow">Writers</span>
+              <strong>{isWriter ? 'Passed' : 'Restricted'}</strong>
+              <span>{walletAddress ? truncateAddress(walletAddress) : 'Presence-gated write access'}</span>
+            </div>
+          </div>
         </section>
 
+        {(appStatus || searchStatus || composeState.message || claimState.message) && (
+          <section className="status-stack">
+            {appStatus ? <p className="status-banner error">{appStatus}</p> : null}
+            {searchStatus ? <p className="status-banner">{searchStatus}</p> : null}
+            {claimState.message ? <p className="status-banner">{claimState.message}</p> : null}
+            {composeState.message ? <p className="status-banner">{composeState.message}</p> : null}
+          </section>
+        )}
+
+        {activePanel === 'about' ? (
+          <Panel title="About Preglyph" body={ABOUT_COPY} onClose={() => setActivePanel('')} />
+        ) : null}
+        {activePanel === 'how' ? (
+          <Panel
+            title="How it works"
+            body="1. Connect your wallet. 2. Pass Presence verification. 3. The service grants onchain writer access. 4. Write a short record to Ethereum. 5. Search tx hashes and revisit your archive from Profile."
+            onClose={() => setActivePanel('')}
+          />
+        ) : null}
+        {activePanel === 'profile' ? (
+          <div className="floating-panel glass-panel profile-panel">
+            <div className="floating-panel-head">
+              <div>
+                <p className="eyebrow">Profile</p>
+                <h3>{walletAddress ? truncateAddress(walletAddress) : 'Connect wallet'}</h3>
+              </div>
+              <button type="button" className="ghost-chip" onClick={() => setActivePanel('')}>
+                Close
+              </button>
+            </div>
+            <div className="profile-grid">
+              <div className="glass-subpanel profile-card">
+                <p className="eyebrow">Wallet</p>
+                <strong>{walletAddress || 'Not connected'}</strong>
+                <span>{profile?.onchainApproved ? 'Onchain writer access granted.' : 'Write access locked.'}</span>
+              </div>
+              <div className="glass-subpanel profile-card">
+                <p className="eyebrow">Presence</p>
+                <strong>{profile?.presence?.passed ? 'Passed' : 'Not passed yet'}</strong>
+                <span>
+                  {profile?.presence?.writer?.verifiedAt
+                    ? `Verified ${formatRecordedAt(Math.floor(new Date(profile.presence.writer.verifiedAt).getTime() / 1000))}`
+                    : 'Use the sandbox verifier to unlock writing during testnet setup.'}
+                </span>
+              </div>
+            </div>
+            <div className="profile-actions">
+              <button type="button" className="connect-chip" disabled={claimState.loading || !walletAddress} onClick={handlePresenceClaim}>
+                {claimState.loading ? 'Verifying…' : 'Pass Presence sandbox'}
+              </button>
+            </div>
+            <div className="profile-records">
+              <div className="section-row">
+                <h4>My writings</h4>
+                <span>{profileRecords.length} records</span>
+              </div>
+              {profileRecords.length ? (
+                <div className="profile-record-list">
+                  {profileRecords.map((record) => (
+                    <button key={`${record.txHash}-${record.id}`} type="button" className="profile-record-item" onClick={() => setActiveRecord(record)}>
+                      <strong>{record.content}</strong>
+                      <span>{relativeTimeFromUnix(record.createdAt)} · {record.txHash.slice(0, 10)}…</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-copy">No records yet. Pass Presence, then write your first permanent record.</p>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        <section className="composer glass-panel">
+          <div className="section-row">
+            <div>
+              <p className="eyebrow">Write to Ethereum</p>
+              <h2>Only Presence-passed wallets can inscribe.</h2>
+            </div>
+            <span className={`gate-pill ${isWriter ? 'unlocked' : 'locked'}`}>{isWriter ? 'Unlocked' : 'Locked'}</span>
+          </div>
+          <form className="compose-form" onSubmit={handleComposeSubmit}>
+            <textarea
+              value={composeText}
+              onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
+              placeholder="Write a short permanent public record…"
+            />
+            <div className="compose-footer">
+              <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
+              <button type="submit" className="connect-chip" disabled={composeState.loading || !isWriter}>
+                {composeState.loading ? 'Writing…' : 'Write onchain'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="slab-grid" aria-label="Public record slabs">
+          {records.length ? (
+            records.map((record) => (
+              <button
+                key={`${record.txHash}-${record.id}`}
+                type="button"
+                className="slab-button"
+                onClick={() => setActiveRecord(record)}
+                aria-label={`Open record by ${record.author}`}
+              >
+                <Inscription text={record.content} size={MATRIX_SIZE} variant="preview" fontVersion={fontVersion} />
+              </button>
+            ))
+          ) : (
+            <div className="empty-state glass-panel">
+              <p className="eyebrow">Archive empty</p>
+              <h3>Deploy the contract, pass a wallet, and write the first record.</h3>
+              <p className="floating-panel-copy">Once the local test chain is running, every confirmed transaction will appear here as a slab preview.</p>
+            </div>
+          )}
+        </section>
       </main>
 
-      {activeRecord && (
+      {activeRecord ? (
         <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Record detail">
           <div className="detail-dim" onClick={() => setActiveRecord(null)} />
           <div className="detail-panel glass-panel">
@@ -362,25 +501,29 @@ export default function Page() {
             <div className="detail-head simple-head">
               <div className="detail-author-block">
                 <p className="eyebrow">Recorded by</p>
-                <strong>{activeRecord.author}</strong>
+                <strong>{truncateAddress(activeRecord.author)}</strong>
               </div>
               <div className="detail-time-block">
                 <p className="eyebrow">Recorded at</p>
-                <span>{formatRecordedAt(activeRecord.time)}</span>
+                <span>{formatRecordedAt(activeRecord.createdAt)}</span>
               </div>
             </div>
             <div className="detail-tx glass-subpanel">
               <p className="eyebrow">Transaction</p>
-              <code>{fakeTxHash(activeRecord.id)}</code>
+              <code>{activeRecord.txHash}</code>
+            </div>
+            <div className="detail-copy glass-subpanel">
+              <p className="eyebrow">Plain text</p>
+              <strong>{activeRecord.content}</strong>
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
-                <DetailSlab3D text={activeRecord.text} fontVersion={fontVersion} />
+                <DetailSlab3D text={activeRecord.content} fontVersion={fontVersion} />
               </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
