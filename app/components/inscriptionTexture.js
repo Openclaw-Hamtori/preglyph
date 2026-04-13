@@ -146,7 +146,7 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base'
         return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(196,228,255,0.145)" filter="url(#preglyphGlow)">${safeChar}</text>`;
       }
       if (mode === 'hover-fill') {
-        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(196,228,255,0.64)">${safeChar}</text>`;
+        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(204,233,255,0.76)">${safeChar}</text>`;
       }
       return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(6,12,18,0.96)">${safeChar}</text>`;
     })
