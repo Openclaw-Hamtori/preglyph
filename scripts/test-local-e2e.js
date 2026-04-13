@@ -13,7 +13,7 @@ const PREGlyph_ABI = require('../lib/preglyphAbi.cjs');
 
 const FIXTURES_DIR = path.resolve(
   process.cwd(),
-  '../presence-auth/packages/presence-verifier/fixtures/presence-sandbox',
+  'vendor/presence-verifier/fixtures/presence-sandbox',
 );
 
 async function main() {
