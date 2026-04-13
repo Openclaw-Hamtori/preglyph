@@ -383,7 +383,7 @@ time,
 
 .slab-button:hover .inscription-hover-fill,
 .slab-button:focus-visible .inscription-hover-fill {
-  opacity: 1;
+  opacity: 0.64;
 }
 
 .slab-button:hover .inscription-glow,
