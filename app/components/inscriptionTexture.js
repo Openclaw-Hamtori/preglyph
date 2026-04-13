@@ -3,6 +3,16 @@
 import * as THREE from 'three';
 
 export const MATRIX_SIZE = 10;
+export const INSCRIPTION_FONT_STACK = [
+  '"Noto Sans KR"',
+  '"Noto Sans SC"',
+  '"Noto Sans JP"',
+  '"Noto Sans Devanagari"',
+  '"Noto Naskh Arabic"',
+  '"Noto Sans"',
+  'system-ui',
+  'sans-serif',
+].join(', ');
 
 export function sanitizeText(text) {
   return (text || '')
@@ -40,10 +50,7 @@ function drawBaseMatrix(ctx, text, size) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.floor(cellSize * 0.6)}px "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace`;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.miterLimit = 2;
+  ctx.font = `600 ${Math.floor(cellSize * 0.56)}px ${INSCRIPTION_FONT_STACK}`;
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -57,11 +64,7 @@ function drawBaseMatrix(ctx, text, size) {
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.strokeStyle = 'rgba(215, 228, 245, 0.18)';
-        ctx.lineWidth = Math.max(1.5, cellSize * 0.026);
-        ctx.strokeText(char, x, y - cellSize * 0.012);
-
-        ctx.fillStyle = '#08111a';
+        ctx.fillStyle = 'rgba(6, 12, 18, 0.96)';
         ctx.fillText(char, x, y - cellSize * 0.012);
       }
     }
@@ -80,7 +83,7 @@ function drawGlowMatrix(ctx, text, size) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.floor(cellSize * 0.6)}px "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace`;
+  ctx.font = `600 ${Math.floor(cellSize * 0.56)}px ${INSCRIPTION_FONT_STACK}`;
 
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
@@ -113,7 +116,7 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
   const inset = viewBox * 0.1;
   const cellSize = (viewBox - inset * 2) / size;
   const dotRadius = Math.max(2.6, cellSize * 0.055);
-  const fontSize = Math.floor(cellSize * 0.6);
+  const fontSize = Math.floor(cellSize * 0.56);
 
   const dots = cells
     .map((char, index) => {
@@ -138,8 +141,7 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
       return [
-        `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="'JetBrains Mono','IBM Plex Mono',ui-monospace,monospace" font-size="${fontSize}" font-weight="700" fill="rgba(215,228,245,0.18)" stroke="rgba(215,228,245,0.18)" stroke-width="${Math.max(1.5, cellSize * 0.026).toFixed(2)}">${safeChar}</text>`,
-        `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="'JetBrains Mono','IBM Plex Mono',ui-monospace,monospace" font-size="${fontSize}" font-weight="700" fill="#08111a">${safeChar}</text>`,
+        `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(6,12,18,0.96)">${safeChar}</text>`,
       ].join('');
     })
     .join('');

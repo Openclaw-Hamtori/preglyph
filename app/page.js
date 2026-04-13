@@ -260,8 +260,8 @@ function formatRecordedAt(relative) {
   return relative;
 }
 
-function Inscription({ text, size = MATRIX_SIZE, variant = 'preview' }) {
-  const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size]);
+function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersion = 0 }) {
+  const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size, fontVersion]);
 
   return (
     <img
@@ -275,6 +275,7 @@ function Inscription({ text, size = MATRIX_SIZE, variant = 'preview' }) {
 
 export default function Page() {
   const [activeRecord, setActiveRecord] = useState(null);
+  const [fontVersion, setFontVersion] = useState(0);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -282,6 +283,17 @@ export default function Page() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.fonts?.ready) return undefined;
+    let cancelled = false;
+    document.fonts.ready.then(() => {
+      if (!cancelled) setFontVersion((current) => current + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -311,7 +323,7 @@ export default function Page() {
               onClick={() => setActiveRecord(record)}
               aria-label={`Open record by ${record.author}`}
             >
-              <Inscription text={record.text} size={MATRIX_SIZE} variant="preview" />
+              <Inscription text={record.text} size={MATRIX_SIZE} variant="preview" fontVersion={fontVersion} />
             </button>
           ))}
         </section>
@@ -341,7 +353,7 @@ export default function Page() {
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
-                <DetailSlab3D text={activeRecord.text} />
+                <DetailSlab3D text={activeRecord.text} fontVersion={fontVersion} />
               </div>
             </div>
           </div>
