@@ -262,6 +262,7 @@ function formatRecordedAt(relative) {
 
 function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersion = 0 }) {
   const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size, fontVersion]);
+  const hoverFillTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'hover-fill'), [text, size, fontVersion]);
   const glowTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'glow'), [text, size, fontVersion]);
 
   return (
@@ -273,13 +274,22 @@ function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersio
         draggable={false}
       />
       {variant === 'preview' && (
-        <img
-          className="inscription-glow"
-          src={glowTextureUrl}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-        />
+        <>
+          <img
+            className="inscription-hover-fill"
+            src={hoverFillTextureUrl}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+          />
+          <img
+            className="inscription-glow"
+            src={glowTextureUrl}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+          />
+        </>
       )}
     </span>
   );

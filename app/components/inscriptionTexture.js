@@ -118,7 +118,7 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base'
   const dotRadius = Math.max(2.6, cellSize * 0.055);
   const fontSize = Math.floor(cellSize * 0.56);
 
-  const dots = mode === 'glow'
+  const dots = mode === 'glow' || mode === 'hover-fill'
     ? ''
     : cells
         .map((char, index) => {
@@ -143,13 +143,16 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base'
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
       if (mode === 'glow') {
-        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(214,236,255,0.92)" filter="url(#preglyphGlow)">${safeChar}</text>`;
+        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(196,228,255,0.72)" filter="url(#preglyphGlow)">${safeChar}</text>`;
+      }
+      if (mode === 'hover-fill') {
+        return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(218,240,255,0.96)">${safeChar}</text>`;
       }
       return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-family="${INSCRIPTION_FONT_STACK.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" fill="rgba(6,12,18,0.96)">${safeChar}</text>`;
     })
     .join('');
 
-  const backgroundRect = mode === 'glow'
+  const backgroundRect = mode === 'glow' || mode === 'hover-fill'
     ? ''
     : `<rect width="${viewBox}" height="${viewBox}" fill="url(#preglyphBg)" />`;
 
@@ -161,9 +164,12 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base'
           <stop offset="54%" stop-color="#37475d" />
           <stop offset="100%" stop-color="#2b3747" />
         </linearGradient>
-        <filter id="preglyphGlow" x="-24%" y="-24%" width="148%" height="148%">
-          <feGaussianBlur stdDeviation="10" result="blur" />
-          <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" />
+        <filter id="preglyphGlow" x="-18%" y="-18%" width="136%" height="136%">
+          <feGaussianBlur stdDeviation="5.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
       ${backgroundRect}

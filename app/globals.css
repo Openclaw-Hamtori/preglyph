@@ -359,6 +359,7 @@ time,
   box-shadow: none;
 }
 
+.inscription-hover-fill,
 .inscription-glow {
   position: absolute;
   inset: 0;
@@ -366,15 +367,28 @@ time,
   height: 100%;
   object-fit: cover;
   pointer-events: none;
+}
+
+.inscription-hover-fill {
   opacity: 0;
-  transform: scale(1.01);
-  transition: opacity 0.18s ease;
+  transition: opacity 0.28s ease;
+}
+
+.inscription-glow {
+  opacity: 0;
+  transform: scale(1.006);
+  transition: opacity 0.36s ease;
   mix-blend-mode: screen;
+}
+
+.slab-button:hover .inscription-hover-fill,
+.slab-button:focus-visible .inscription-hover-fill {
+  opacity: 1;
 }
 
 .slab-button:hover .inscription-glow,
 .slab-button:focus-visible .inscription-glow {
-  opacity: 0.95;
+  opacity: 0.72;
 }
 
 .inscription.preview {
