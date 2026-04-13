@@ -388,7 +388,7 @@ time,
 
 .slab-button:hover .inscription-glow,
 .slab-button:focus-visible .inscription-glow {
-  opacity: 0.58;
+  opacity: 0.29;
 }
 
 .inscription.preview {
