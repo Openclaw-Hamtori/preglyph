@@ -69,6 +69,10 @@ function getPermissionAccounts(permissions = []) {
   return Array.isArray(restrictReturnedAccounts?.value) ? restrictReturnedAccounts.value : [];
 }
 
+function isTransientMetaMaskStartupError(error) {
+  return error?.code === -32603;
+}
+
 async function requestWithRetry(provider, method, { attempts = 3, delayMs = 250 } = {}) {
   let lastError;
 
@@ -77,8 +81,7 @@ async function requestWithRetry(provider, method, { attempts = 3, delayMs = 250 
       return await provider.request({ method });
     } catch (error) {
       lastError = error;
-      const isRetriableInternalError = error?.code === -32603;
-      if (!isRetriableInternalError || attempt === attempts) {
+      if (!isTransientMetaMaskStartupError(error) || attempt === attempts) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
@@ -86,6 +89,30 @@ async function requestWithRetry(provider, method, { attempts = 3, delayMs = 250 
   }
 
   throw lastError;
+}
+
+async function waitForMetaMaskProvider(timeoutMs = 1200) {
+  const existingProvider = getMetaMaskProvider();
+  if (existingProvider) return existingProvider;
+  if (typeof window === 'undefined') return null;
+
+  return await new Promise((resolve) => {
+    let settled = false;
+    let timeoutId = null;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('ethereum#initialized', handleInitialized);
+      if (timeoutId) clearTimeout(timeoutId);
+      resolve(getMetaMaskProvider());
+    };
+
+    const handleInitialized = () => finish();
+
+    window.addEventListener('ethereum#initialized', handleInitialized, { once: true });
+    timeoutId = setTimeout(finish, timeoutMs);
+  });
 }
 
 function relativeTimeFromUnix(timestamp) {
@@ -138,6 +165,10 @@ export default function Page() {
   const [profile, setProfile] = useState(null);
   const connectPromiseRef = useRef(null);
   const probeRetryTimeoutRef = useRef(null);
+  const probeInFlightRef = useRef(false);
+  const queuedProbeReasonRef = useRef('');
+  const probeAttemptRef = useRef(0);
+  const probeRequestIdRef = useRef(0);
   const [walletDebug, setWalletDebug] = useState({
     providerDetected: false,
     providerRdns: '',
@@ -237,23 +268,8 @@ export default function Page() {
   }, [searchQuery]);
 
   useEffect(() => {
-    setWalletProbeDone(false);
-    const metamaskProvider = getMetaMaskProvider();
-    if (!metamaskProvider) {
-      setWalletDebug((current) => ({
-        ...current,
-        providerDetected: false,
-        providerRdns: '',
-        selectedAddress: '',
-        chainId: '',
-        probeStatus: 'no_provider',
-        lastEvent: 'probe:no_provider',
-      }));
-      setWalletProbeDone(true);
-      return undefined;
-    }
-
     let cancelled = false;
+    let activeProvider = null;
 
     const clearProbeRetry = () => {
       if (probeRetryTimeoutRef.current) {
@@ -262,131 +278,175 @@ export default function Page() {
       }
     };
 
-    const snapshotProvider = async (eventLabel, extra = {}) => {
-      let permissions = [];
+    const syncWalletState = async (reason = 'mount') => {
+      if (!activeProvider) return;
+      if (probeInFlightRef.current) {
+        queuedProbeReasonRef.current = reason;
+        return;
+      }
+
+      probeInFlightRef.current = true;
+      clearProbeRetry();
+      const requestId = ++probeRequestIdRef.current;
+
+      setWalletDebug((current) => ({
+        ...current,
+        providerDetected: true,
+        providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
+        selectedAddress: activeProvider?.selectedAddress || '',
+        chainId: activeProvider?.chainId || '',
+        probeStatus: 'probing',
+        lastEvent: `probe:start:${reason}`,
+      }));
+
       try {
-        permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
-      } catch {}
+        const accounts = await requestWithRetry(activeProvider, 'eth_accounts', { attempts: 2, delayMs: 350 });
+        if (cancelled || requestId !== probeRequestIdRef.current) return;
 
+        const nextAddress = accounts?.[0] || '';
+        probeAttemptRef.current = 0;
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: true,
+          providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
+          selectedAddress: activeProvider?.selectedAddress || nextAddress,
+          chainId: activeProvider?.chainId || '',
+          probeStatus: nextAddress ? 'connected' : 'disconnected',
+          lastEthAccounts: accounts || [],
+          lastPermissions: current.lastPermissions || [],
+          lastErrorCode: '',
+          lastErrorMessage: '',
+          lastEvent: `probe:success:${reason}`,
+        }));
+        setWalletAddress(nextAddress);
+        setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
+        await loadProfile(nextAddress);
+        if (!cancelled && requestId === probeRequestIdRef.current) {
+          setWalletProbeDone(true);
+        }
+      } catch (error) {
+        if (cancelled || requestId !== probeRequestIdRef.current) return;
+
+        const nextAttempt = probeAttemptRef.current + 1;
+        probeAttemptRef.current = nextAttempt;
+        const retryable = isTransientMetaMaskStartupError(error) && nextAttempt < 4;
+
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: true,
+          providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
+          selectedAddress: activeProvider?.selectedAddress || '',
+          chainId: activeProvider?.chainId || '',
+          probeStatus: retryable ? 'retrying' : 'error',
+          lastErrorCode: String(error?.code || ''),
+          lastErrorMessage: error?.message || 'Unknown probe error',
+          lastErrorAt: new Date().toISOString(),
+          lastEvent: retryable ? `probe:retry:${reason}:${nextAttempt}` : `probe:error:${reason}`,
+          lastEthAccounts: [],
+        }));
+
+        if (retryable) {
+          probeRetryTimeoutRef.current = setTimeout(() => {
+            if (!cancelled) syncWalletState(`retry-${nextAttempt}`);
+          }, 900 * nextAttempt);
+          return;
+        }
+
+        setWalletAddress('');
+        setProfile(null);
+        setWalletProbeDone(true);
+      } finally {
+        if (requestId === probeRequestIdRef.current) {
+          probeInFlightRef.current = false;
+          const queuedReason = queuedProbeReasonRef.current;
+          queuedProbeReasonRef.current = '';
+          if (!cancelled && queuedReason) {
+            syncWalletState(queuedReason);
+          }
+        }
+      }
+    };
+
+    const setupWallet = async () => {
+      setWalletProbeDone(false);
+      const metamaskProvider = await waitForMetaMaskProvider();
       if (cancelled) return;
+      if (!metamaskProvider) {
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: false,
+          providerRdns: '',
+          selectedAddress: '',
+          chainId: '',
+          probeStatus: 'no_provider',
+          lastEvent: 'probe:no_provider',
+        }));
+        setWalletProbeDone(true);
+        return;
+      }
 
+      activeProvider = metamaskProvider;
       setWalletDebug((current) => ({
         ...current,
         providerDetected: true,
         providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
         selectedAddress: metamaskProvider?.selectedAddress || '',
         chainId: metamaskProvider?.chainId || '',
-        lastPermissions: permissions,
-        lastEvent: eventLabel,
-        ...extra,
+        lastEvent: 'probe:provider_ready',
       }));
-    };
 
-    const syncWalletState = async () => {
-      clearProbeRetry();
-      setWalletDebug((current) => ({ ...current, probeStatus: 'probing', lastEvent: 'probe:start' }));
-      let shouldFinalizeProbe = true;
-      try {
-        const accounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 4, delayMs: 300 });
-        if (cancelled) return;
-        let permissions = [];
-        try {
-          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
-        } catch {}
-        const permissionAccounts = getPermissionAccounts(permissions);
-        const resolvedAccounts = accounts?.[0] ? accounts : permissionAccounts;
-        const nextAddress = resolvedAccounts?.[0] || '';
-        await snapshotProvider('probe:success', {
+      const handleAccountsChanged = (accounts) => {
+        clearProbeRetry();
+        probeAttemptRef.current = 0;
+        const nextAddress = accounts?.[0] || '';
+        setWalletDebug((current) => ({
+          ...current,
+          selectedAddress: nextAddress,
+          lastEthAccounts: accounts || [],
           probeStatus: nextAddress ? 'connected' : 'disconnected',
-          lastEthAccounts: resolvedAccounts || [],
-          lastPermissions: permissions,
           lastErrorCode: '',
           lastErrorMessage: '',
-        });
+          lastEvent: 'event:accountsChanged',
+        }));
         setWalletAddress(nextAddress);
+        setWalletProbeDone(true);
         setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
-        await loadProfile(nextAddress);
-      } catch (error) {
-        if (cancelled) return;
-        await snapshotProvider('probe:error', {
-          probeStatus: error?.code === -32603 ? 'retrying' : 'error',
-          lastErrorCode: String(error?.code || ''),
-          lastErrorMessage: error?.message || 'Unknown probe error',
-          lastErrorAt: new Date().toISOString(),
-        });
-        if (error?.code === -32603) {
-          shouldFinalizeProbe = false;
-          probeRetryTimeoutRef.current = setTimeout(() => {
-            if (!cancelled) syncWalletState();
-          }, 1200);
-          return;
-        }
-        setWalletAddress('');
-        setProfile(null);
-      } finally {
-        if (!cancelled && shouldFinalizeProbe) setWalletProbeDone(true);
+        loadProfile(nextAddress);
+      };
+
+      const handleChainChanged = () => {
+        setWalletDebug((current) => ({
+          ...current,
+          chainId: metamaskProvider?.chainId || '',
+          lastEvent: 'event:chainChanged',
+        }));
+        loadRecords();
+        syncWalletState('chainChanged');
+      };
+
+      metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
+      metamaskProvider.on?.('chainChanged', handleChainChanged);
+      syncWalletState('mount');
+
+      return () => {
+        metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
+        metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
+      };
+    };
+
+    let cleanupListeners = null;
+    setupWallet().then((cleanup) => {
+      if (typeof cleanup === 'function') {
+        cleanupListeners = cleanup;
       }
-    };
-
-    const handleAccountsChanged = (accounts) => {
-      const nextAddress = accounts?.[0] || '';
-      setWalletDebug((current) => ({
-        ...current,
-        selectedAddress: nextAddress,
-        lastEthAccounts: accounts || [],
-        probeStatus: nextAddress ? 'connected' : 'disconnected',
-        lastEvent: 'event:accountsChanged',
-      }));
-      setWalletAddress(nextAddress);
-      setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
-      loadProfile(nextAddress);
-    };
-
-    const handleChainChanged = () => {
-      setWalletDebug((current) => ({
-        ...current,
-        chainId: metamaskProvider?.chainId || '',
-        lastEvent: 'event:chainChanged',
-      }));
-      setWalletProbeDone(false);
-      loadRecords();
-      syncWalletState();
-    };
-
-    const handleWindowFocus = () => {
-      setWalletDebug((current) => ({ ...current, lastEvent: 'event:focus' }));
-      setWalletProbeDone(false);
-      syncWalletState();
-    };
-
-    const handlePageShow = () => {
-      setWalletDebug((current) => ({ ...current, lastEvent: 'event:pageshow' }));
-      setWalletProbeDone(false);
-      syncWalletState();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
-      setWalletDebug((current) => ({ ...current, lastEvent: 'event:visibilitychange' }));
-      setWalletProbeDone(false);
-      syncWalletState();
-    };
-
-    syncWalletState();
-    metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
-    metamaskProvider.on?.('chainChanged', handleChainChanged);
-    window.addEventListener('focus', handleWindowFocus);
-    window.addEventListener('pageshow', handlePageShow);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    });
 
     return () => {
       cancelled = true;
       clearProbeRetry();
-      metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
-      metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
-      window.removeEventListener('focus', handleWindowFocus);
-      window.removeEventListener('pageshow', handlePageShow);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      probeInFlightRef.current = false;
+      queuedProbeReasonRef.current = '';
+      if (cleanupListeners) cleanupListeners();
     };
   }, []);
 
@@ -455,10 +515,28 @@ export default function Page() {
         lastErrorMessage: '',
       }));
       try {
-        const existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 3, delayMs: 250 });
+        let existingAccounts = [];
         let permissions = [];
         try {
-          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
+          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 2, delayMs: 250 });
+        } catch (error) {
+          if (!isTransientMetaMaskStartupError(error)) {
+            throw error;
+          }
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: metamaskProvider?.selectedAddress || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastErrorCode: String(error?.code || ''),
+            lastErrorMessage: error?.message || 'Unexpected error',
+            lastErrorAt: new Date().toISOString(),
+            lastEvent: 'connect:preflight-eth_accounts-error',
+          }));
+        }
+        try {
+          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
         } catch {}
         const permissionAccounts = getPermissionAccounts(permissions);
         const reusableAccounts = existingAccounts?.[0] ? existingAccounts : permissionAccounts;
@@ -478,10 +556,6 @@ export default function Page() {
         }
 
         const accounts = await requestWithRetry(metamaskProvider, 'eth_requestAccounts', { attempts: 2, delayMs: 400 });
-        let requestPermissions = [];
-        try {
-          requestPermissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
-        } catch {}
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
@@ -489,7 +563,7 @@ export default function Page() {
           selectedAddress: accounts?.[0] || '',
           chainId: metamaskProvider?.chainId || '',
           lastEthAccounts: accounts || [],
-          lastPermissions: requestPermissions,
+          lastPermissions: permissions,
           probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
           lastEvent: 'connect:requestAccounts-success',
         }));
