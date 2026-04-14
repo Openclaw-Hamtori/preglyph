@@ -104,6 +104,7 @@ export default function Page() {
   const [network, setNetwork] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
+  const [walletProbeDone, setWalletProbeDone] = useState(false);
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -192,7 +193,10 @@ export default function Page() {
 
   useEffect(() => {
     const metamaskProvider = getMetaMaskProvider();
-    if (!metamaskProvider) return undefined;
+    if (!metamaskProvider) {
+      setWalletProbeDone(true);
+      return undefined;
+    }
 
     const handleAccountsChanged = (accounts) => {
       const nextAddress = accounts?.[0] || '';
@@ -203,10 +207,15 @@ export default function Page() {
 
     const handleChainChanged = () => {
       loadRecords();
-      if (walletAddress) loadProfile(walletAddress);
+      const activeAddress = metamaskProvider.selectedAddress || '';
+      if (activeAddress) loadProfile(activeAddress);
     };
 
-    metamaskProvider.request({ method: 'eth_accounts' }).then(handleAccountsChanged).catch(() => {});
+    metamaskProvider
+      .request({ method: 'eth_accounts' })
+      .then(handleAccountsChanged)
+      .catch(() => {})
+      .finally(() => setWalletProbeDone(true));
     metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
     metamaskProvider.on?.('chainChanged', handleChainChanged);
 
@@ -214,7 +223,7 @@ export default function Page() {
       metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
     };
-  }, [walletAddress]);
+  }, []);
 
   async function ensureWalletOnExpectedChain(provider, metamaskProvider) {
     const networkInfo = await provider.getNetwork();
@@ -404,8 +413,8 @@ export default function Page() {
               Profile
             </button>
           ) : (
-            <button type="button" className="connect-chip" onClick={handleConnectWallet}>
-              Connect
+            <button type="button" className="connect-chip" onClick={handleConnectWallet} disabled={!walletProbeDone}>
+              {walletProbeDone ? 'Connect' : 'Checking…'}
             </button>
           )}
         </div>

@@ -219,6 +219,11 @@ time,
   background: rgba(24, 39, 60, 0.96);
 }
 
+.connect-chip:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
 .main-layout {
   position: relative;
   z-index: 1;
