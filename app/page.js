@@ -137,6 +137,7 @@ export default function Page() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [profile, setProfile] = useState(null);
   const connectPromiseRef = useRef(null);
+  const probeRetryTimeoutRef = useRef(null);
   const [walletDebug, setWalletDebug] = useState({
     providerDetected: false,
     providerRdns: '',
@@ -254,6 +255,13 @@ export default function Page() {
 
     let cancelled = false;
 
+    const clearProbeRetry = () => {
+      if (probeRetryTimeoutRef.current) {
+        clearTimeout(probeRetryTimeoutRef.current);
+        probeRetryTimeoutRef.current = null;
+      }
+    };
+
     const snapshotProvider = async (eventLabel, extra = {}) => {
       let permissions = [];
       try {
@@ -275,7 +283,9 @@ export default function Page() {
     };
 
     const syncWalletState = async () => {
+      clearProbeRetry();
       setWalletDebug((current) => ({ ...current, probeStatus: 'probing', lastEvent: 'probe:start' }));
+      let shouldFinalizeProbe = true;
       try {
         const accounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 4, delayMs: 300 });
         if (cancelled) return;
@@ -299,15 +309,22 @@ export default function Page() {
       } catch (error) {
         if (cancelled) return;
         await snapshotProvider('probe:error', {
-          probeStatus: 'error',
+          probeStatus: error?.code === -32603 ? 'retrying' : 'error',
           lastErrorCode: String(error?.code || ''),
           lastErrorMessage: error?.message || 'Unknown probe error',
           lastErrorAt: new Date().toISOString(),
         });
+        if (error?.code === -32603) {
+          shouldFinalizeProbe = false;
+          probeRetryTimeoutRef.current = setTimeout(() => {
+            if (!cancelled) syncWalletState();
+          }, 1200);
+          return;
+        }
         setWalletAddress('');
         setProfile(null);
       } finally {
-        if (!cancelled) setWalletProbeDone(true);
+        if (!cancelled && shouldFinalizeProbe) setWalletProbeDone(true);
       }
     };
 
@@ -331,18 +348,45 @@ export default function Page() {
         chainId: metamaskProvider?.chainId || '',
         lastEvent: 'event:chainChanged',
       }));
+      setWalletProbeDone(false);
       loadRecords();
+      syncWalletState();
+    };
+
+    const handleWindowFocus = () => {
+      setWalletDebug((current) => ({ ...current, lastEvent: 'event:focus' }));
+      setWalletProbeDone(false);
+      syncWalletState();
+    };
+
+    const handlePageShow = () => {
+      setWalletDebug((current) => ({ ...current, lastEvent: 'event:pageshow' }));
+      setWalletProbeDone(false);
+      syncWalletState();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      setWalletDebug((current) => ({ ...current, lastEvent: 'event:visibilitychange' }));
+      setWalletProbeDone(false);
       syncWalletState();
     };
 
     syncWalletState();
     metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
     metamaskProvider.on?.('chainChanged', handleChainChanged);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       cancelled = true;
+      clearProbeRetry();
       metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
