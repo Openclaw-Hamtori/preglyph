@@ -290,7 +290,6 @@ export default function Page() {
 
     if (rememberedWallet) {
       setWalletAddress(rememberedWallet);
-      setActivePanel((current) => current || 'profile');
       loadProfile(rememberedWallet);
       setWalletDebug((current) => ({
         ...current,
@@ -347,7 +346,7 @@ export default function Page() {
           lastEvent: `probe:success:${reason}`,
         }));
         setWalletAddress(nextAddress);
-        setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
+        setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
         await loadProfile(nextAddress);
         if (!cancelled && requestId === probeRequestIdRef.current) {
           setWalletProbeDone(true);
@@ -443,7 +442,7 @@ export default function Page() {
         setWalletAddress(nextAddress);
         writeRememberedWallet(nextAddress);
         setWalletProbeDone(true);
-        setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
+        setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
         loadProfile(nextAddress);
       };
 
@@ -534,7 +533,7 @@ export default function Page() {
       }
       setWalletAddress(nextAddress);
       writeRememberedWallet(nextAddress);
-      setActivePanel('profile');
+      setActivePanel('');
       setWalletProbeDone(true);
       await loadProfile(nextAddress);
       return nextAddress;
@@ -818,13 +817,41 @@ export default function Page() {
         </form>
 
         <div className="nav nav-actions">
+          {walletAddress ? (
+            <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'my-preglyph' ? '' : 'my-preglyph')}>
+              My Preglyph
+            </button>
+          ) : null}
           <button type="button" className="nav-link" onClick={handleOpenWriteFlow}>
             Write
           </button>
           {walletAddress ? (
-            <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'profile' ? '' : 'profile')}>
-              Profile
-            </button>
+            <div className="profile-menu-shell">
+              <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'menu' ? '' : 'menu')}>
+                Profile
+              </button>
+              {activePanel === 'menu' ? (
+                <div className="profile-menu glass-panel" role="menu" aria-label="Profile menu">
+                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow}>
+                    <span>Write</span>
+                    <strong>New record</strong>
+                  </button>
+                  <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
+                    <span>My Preglyph</span>
+                    <strong>{profileRecords.length} records</strong>
+                  </button>
+                  <div className="profile-menu-divider" />
+                  <div className="profile-menu-address">
+                    <span>Wallet</span>
+                    <strong>{truncateAddress(walletAddress)}</strong>
+                  </div>
+                  <button type="button" className="profile-menu-item danger" onClick={handleDisconnectWallet}>
+                    <span>Disconnect</span>
+                    <strong>MetaMask</strong>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <button type="button" className="connect-chip" onClick={handleConnectWallet} disabled={!walletProbeDone || isConnecting}>
               {!walletProbeDone ? 'Checking…' : isConnecting ? 'Connecting…' : 'Connect'}
@@ -865,11 +892,11 @@ export default function Page() {
       </section>
 
       <main id="top" className="main-layout">
-        {activePanel === 'profile' ? (
+        {activePanel === 'my-preglyph' ? (
           <div className="floating-panel glass-panel profile-panel">
             <div className="floating-panel-head">
               <div>
-                <p className="eyebrow">Profile</p>
+                <p className="eyebrow">My Preglyph</p>
                 <h3>{walletAddress ? truncateAddress(walletAddress) : 'Connect wallet'}</h3>
               </div>
               <button type="button" className="ghost-chip" onClick={() => setActivePanel('')}>
@@ -881,7 +908,10 @@ export default function Page() {
                 <p className="eyebrow">Wallet</p>
                 <strong>{walletAddress || 'Not connected'}</strong>
                 <span>{profile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
-                <div className="profile-actions">
+                <div className="profile-actions wrap-actions">
+                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow}>
+                    Write
+                  </button>
                   <button type="button" className="ghost-chip" onClick={handleDisconnectWallet}>
                     Disconnect MetaMask
                   </button>
