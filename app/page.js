@@ -415,9 +415,9 @@ export default function Page() {
         }
 
         const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
-        let permissions = [];
+        let requestPermissions = [];
         try {
-          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          requestPermissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
         } catch {}
         setWalletDebug((current) => ({
           ...current,
@@ -426,7 +426,7 @@ export default function Page() {
           selectedAddress: accounts?.[0] || '',
           chainId: metamaskProvider?.chainId || '',
           lastEthAccounts: accounts || [],
-          lastPermissions: permissions,
+          lastPermissions: requestPermissions,
           probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
           lastEvent: 'connect:requestAccounts-success',
         }));
