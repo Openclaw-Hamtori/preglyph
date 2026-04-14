@@ -69,6 +69,25 @@ function getPermissionAccounts(permissions = []) {
   return Array.isArray(restrictReturnedAccounts?.value) ? restrictReturnedAccounts.value : [];
 }
 
+async function requestWithRetry(provider, method, { attempts = 3, delayMs = 250 } = {}) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await provider.request({ method });
+    } catch (error) {
+      lastError = error;
+      const isRetriableInternalError = error?.code === -32603;
+      if (!isRetriableInternalError || attempt === attempts) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+
+  throw lastError;
+}
+
 function relativeTimeFromUnix(timestamp) {
   if (!timestamp) return 'pending';
   const diffSeconds = Math.max(1, Math.floor(Date.now() / 1000 - timestamp));
@@ -238,7 +257,7 @@ export default function Page() {
     const snapshotProvider = async (eventLabel, extra = {}) => {
       let permissions = [];
       try {
-        permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+        permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
       } catch {}
 
       if (cancelled) return;
@@ -258,11 +277,11 @@ export default function Page() {
     const syncWalletState = async () => {
       setWalletDebug((current) => ({ ...current, probeStatus: 'probing', lastEvent: 'probe:start' }));
       try {
-        const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
+        const accounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 4, delayMs: 300 });
         if (cancelled) return;
         let permissions = [];
         try {
-          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
         } catch {}
         const permissionAccounts = getPermissionAccounts(permissions);
         const resolvedAccounts = accounts?.[0] ? accounts : permissionAccounts;
@@ -392,10 +411,10 @@ export default function Page() {
         lastErrorMessage: '',
       }));
       try {
-        const existingAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
+        const existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 3, delayMs: 250 });
         let permissions = [];
         try {
-          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
         } catch {}
         const permissionAccounts = getPermissionAccounts(permissions);
         const reusableAccounts = existingAccounts?.[0] ? existingAccounts : permissionAccounts;
@@ -414,10 +433,10 @@ export default function Page() {
           return hydrateConnectedWallet(reusableAccounts);
         }
 
-        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
+        const accounts = await requestWithRetry(metamaskProvider, 'eth_requestAccounts', { attempts: 2, delayMs: 400 });
         let requestPermissions = [];
         try {
-          requestPermissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          requestPermissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
         } catch {}
         setWalletDebug((current) => ({
           ...current,
@@ -433,7 +452,7 @@ export default function Page() {
         return hydrateConnectedWallet(accounts);
       } catch (error) {
         try {
-          const fallbackAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
+          const fallbackAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 3, delayMs: 250 });
           if (fallbackAccounts?.[0]) {
             setWalletDebug((current) => ({
               ...current,
@@ -449,7 +468,7 @@ export default function Page() {
         if (typeof window !== 'undefined') {
           let permissions = [];
           try {
-            permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+            permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 2, delayMs: 200 });
           } catch {}
 
           console.error('MetaMask connect failed', {
