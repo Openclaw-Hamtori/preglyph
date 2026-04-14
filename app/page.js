@@ -12,6 +12,22 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
+const LAST_CONNECTED_WALLET_KEY = 'preglyph:last-connected-wallet';
+
+function readRememberedWallet() {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(LAST_CONNECTED_WALLET_KEY) || '';
+}
+
+function writeRememberedWallet(address) {
+  if (typeof window === 'undefined') return;
+  if (address) {
+    window.localStorage.setItem(LAST_CONNECTED_WALLET_KEY, address);
+    return;
+  }
+  window.localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+}
+
 function getMetaMaskProvider() {
   if (typeof window === 'undefined') return null;
   const injected = window.ethereum;
@@ -270,6 +286,17 @@ export default function Page() {
   useEffect(() => {
     let cancelled = false;
     let activeProvider = null;
+    const rememberedWallet = readRememberedWallet();
+
+    if (rememberedWallet) {
+      setWalletAddress(rememberedWallet);
+      setActivePanel((current) => current || 'profile');
+      loadProfile(rememberedWallet);
+      setWalletDebug((current) => ({
+        ...current,
+        lastEvent: 'session:remembered-wallet',
+      }));
+    }
 
     const clearProbeRetry = () => {
       if (probeRetryTimeoutRef.current) {
@@ -305,6 +332,7 @@ export default function Page() {
 
         const nextAddress = accounts?.[0] || '';
         probeAttemptRef.current = 0;
+        writeRememberedWallet(nextAddress);
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
@@ -352,8 +380,12 @@ export default function Page() {
           return;
         }
 
-        setWalletAddress('');
-        setProfile(null);
+        const fallbackRememberedWallet = readRememberedWallet();
+        if (!fallbackRememberedWallet) {
+          setWalletAddress('');
+          setProfile(null);
+          writeRememberedWallet('');
+        }
         setWalletProbeDone(true);
       } finally {
         if (requestId === probeRequestIdRef.current) {
@@ -409,6 +441,7 @@ export default function Page() {
           lastEvent: 'event:accountsChanged',
         }));
         setWalletAddress(nextAddress);
+        writeRememberedWallet(nextAddress);
         setWalletProbeDone(true);
         setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
         loadProfile(nextAddress);
@@ -500,6 +533,7 @@ export default function Page() {
         throw new Error('MetaMask did not return a wallet address.');
       }
       setWalletAddress(nextAddress);
+      writeRememberedWallet(nextAddress);
       setActivePanel('profile');
       setWalletProbeDone(true);
       await loadProfile(nextAddress);
@@ -674,6 +708,7 @@ export default function Page() {
 
     setWalletAddress('');
     setProfile(null);
+    writeRememberedWallet('');
     setActivePanel('');
     setWalletProbeDone(true);
     setWalletDebug((current) => ({
