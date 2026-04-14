@@ -496,33 +496,6 @@ export default function Page() {
       </header>
 
       <main id="top" className="main-layout">
-        <section className="hero-strip glass-panel">
-          <div>
-            <p className="eyebrow">Ethereum source of truth</p>
-            <h1>Human-made permanent records.</h1>
-            <p className="hero-text">{ABOUT_COPY}</p>
-          </div>
-          <div className="hero-stats">
-            <div className="stat-card glass-subpanel">
-              <span className="eyebrow">Network</span>
-              <strong>{network ? `Chain ${network.chainId}` : 'Offline'}</strong>
-              <span>{network ? `Block ${network.blockNumber}` : 'Deploy a contract to begin.'}</span>
-            </div>
-            <div className="stat-card glass-subpanel">
-              <span className="eyebrow">Writers</span>
-              <strong>{isWriter ? 'Passed' : 'Restricted'}</strong>
-              <span>{walletAddress ? truncateAddress(walletAddress) : 'Presence-gated write access'}</span>
-            </div>
-          </div>
-        </section>
-
-        {(searchStatus || composeState.message || claimState.message) && (
-          <section className="status-stack">
-            {searchStatus ? <p className="status-banner">{searchStatus}</p> : null}
-            {claimState.message ? <p className="status-banner">{claimState.message}</p> : null}
-            {composeState.message ? <p className="status-banner">{composeState.message}</p> : null}
-          </section>
-        )}
 
         {activePanel === 'about' ? (
           <Panel title="About Preglyph" body={ABOUT_COPY} onClose={() => setActivePanel('')} />
