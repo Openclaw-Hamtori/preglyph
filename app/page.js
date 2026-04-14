@@ -1,7 +1,7 @@
 'use client';
 
 import { BrowserProvider, Contract } from 'ethers';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
@@ -12,7 +12,6 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
-const LAST_CONNECTED_WALLET_KEY = 'preglyph:last-connected-wallet';
 function getMetaMaskProvider() {
   if (typeof window === 'undefined') return null;
   const injected = window.ethereum;
@@ -106,8 +105,9 @@ export default function Page() {
   const [activeRecord, setActiveRecord] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
   const [walletProbeDone, setWalletProbeDone] = useState(false);
-  const [rememberedWallet, setRememberedWallet] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
   const [profile, setProfile] = useState(null);
+  const connectPromiseRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
@@ -194,12 +194,6 @@ export default function Page() {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const remembered = window.localStorage.getItem(LAST_CONNECTED_WALLET_KEY) || '';
-    setRememberedWallet(remembered);
-  }, []);
-
-  useEffect(() => {
     setWalletProbeDone(false);
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) {
@@ -207,53 +201,38 @@ export default function Page() {
       return undefined;
     }
 
+    let cancelled = false;
+
+    const syncWalletState = async () => {
+      try {
+        const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
+        if (cancelled) return;
+        const nextAddress = accounts?.[0] || '';
+        setWalletAddress(nextAddress);
+        setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
+        await loadProfile(nextAddress);
+      } catch {
+        if (cancelled) return;
+        setWalletAddress('');
+        setProfile(null);
+      } finally {
+        if (!cancelled) setWalletProbeDone(true);
+      }
+    };
+
     const handleAccountsChanged = (accounts) => {
       const nextAddress = accounts?.[0] || '';
       setWalletAddress(nextAddress);
-      setActivePanel(nextAddress ? 'profile' : '');
-      if (typeof window !== 'undefined') {
-        if (nextAddress) {
-          window.localStorage.setItem(LAST_CONNECTED_WALLET_KEY, nextAddress);
-        } else {
-          window.localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
-        }
-      }
-      setRememberedWallet(nextAddress);
+      setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
       loadProfile(nextAddress);
     };
 
     const handleChainChanged = () => {
       loadRecords();
-      const activeAddress = metamaskProvider.selectedAddress || '';
-      if (activeAddress) loadProfile(activeAddress);
+      syncWalletState();
     };
 
-    let cancelled = false;
-
-    const probeWalletSession = async () => {
-      const maxAttempts = rememberedWallet ? 5 : 1;
-
-      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-        try {
-          const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
-          if (cancelled) return;
-
-          if (accounts?.[0] || attempt === maxAttempts - 1) {
-            handleAccountsChanged(accounts);
-            setWalletProbeDone(true);
-            return;
-          }
-        } catch {
-          if (cancelled) return;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
-
-      if (!cancelled) setWalletProbeDone(true);
-    };
-
-    probeWalletSession();
+    syncWalletState();
     metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
     metamaskProvider.on?.('chainChanged', handleChainChanged);
 
@@ -262,7 +241,7 @@ export default function Page() {
       metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
     };
-  }, [rememberedWallet]);
+  }, []);
 
   async function ensureWalletOnExpectedChain(provider, metamaskProvider) {
     const networkInfo = await provider.getNetwork();
@@ -304,37 +283,48 @@ export default function Page() {
       return '';
     }
 
-    try {
-      const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
-      const nextAddress = accounts?.[0] || '';
-      if (!nextAddress) {
-        throw new Error('MetaMask did not return a wallet address.');
-      }
-      setWalletAddress(nextAddress);
-      setActivePanel('profile');
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(LAST_CONNECTED_WALLET_KEY, nextAddress);
-      }
-      setRememberedWallet(nextAddress);
-      setWalletProbeDone(true);
-      await loadProfile(nextAddress);
-      return nextAddress;
-    } catch (error) {
-      if (typeof window !== 'undefined') {
-        console.error('MetaMask connect failed', {
-          code: error?.code,
-          message: error?.message,
-          error,
-        });
-        if (error?.code === 4001) {
-          window.alert('MetaMask connection was cancelled.');
-        } else {
-          const detail = error?.message || 'Wallet connection failed.';
-          window.alert(`Connect failed: ${detail}`);
-        }
-      }
-      return '';
+    if (connectPromiseRef.current) {
+      return connectPromiseRef.current;
     }
+
+    const connectPromise = (async () => {
+      setIsConnecting(true);
+      try {
+        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
+        const nextAddress = accounts?.[0] || '';
+        if (!nextAddress) {
+          throw new Error('MetaMask did not return a wallet address.');
+        }
+        setWalletAddress(nextAddress);
+        setActivePanel('profile');
+        setWalletProbeDone(true);
+        await loadProfile(nextAddress);
+        return nextAddress;
+      } catch (error) {
+        if (typeof window !== 'undefined') {
+          console.error('MetaMask connect failed', {
+            code: error?.code,
+            message: error?.message,
+            error,
+          });
+          if (error?.code === 4001) {
+            window.alert('MetaMask connection was cancelled.');
+          } else if (error?.code === -32002) {
+            window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
+          } else {
+            const detail = error?.message || 'Wallet connection failed.';
+            window.alert(`Connect failed: ${detail}`);
+          }
+        }
+        return '';
+      } finally {
+        connectPromiseRef.current = null;
+        setIsConnecting(false);
+      }
+    })();
+
+    connectPromiseRef.current = connectPromise;
+    return connectPromise;
   }
 
   async function handleOpenWriteFlow() {
@@ -363,11 +353,6 @@ export default function Page() {
       // Some MetaMask builds do not support programmatic revoke; local disconnect still applies.
     }
 
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
-    }
-
-    setRememberedWallet('');
     setWalletAddress('');
     setProfile(null);
     setActivePanel('');
@@ -480,8 +465,8 @@ export default function Page() {
               Profile
             </button>
           ) : (
-            <button type="button" className="connect-chip" onClick={handleConnectWallet} disabled={!walletProbeDone}>
-              {walletProbeDone ? 'Connect' : rememberedWallet ? 'Restoring…' : 'Checking…'}
+            <button type="button" className="connect-chip" onClick={handleConnectWallet} disabled={!walletProbeDone || isConnecting}>
+              {!walletProbeDone ? 'Checking…' : isConnecting ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
