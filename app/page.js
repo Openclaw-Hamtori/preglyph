@@ -215,6 +215,12 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    if (searchQuery.trim()) return;
+    setSearchResults(null);
+    setSearchStatus('');
+  }, [searchQuery]);
+
+  useEffect(() => {
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) return undefined;
 
@@ -273,8 +279,10 @@ export default function Page() {
   async function handleConnectWallet() {
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) {
-      setClaimState({ loading: false, message: 'MetaMask is required. Opening MetaMask…' });
       openMetaMaskInstall();
+      if (typeof window !== 'undefined') {
+        window.alert('MetaMask is required to continue.');
+      }
       return '';
     }
 
@@ -288,7 +296,13 @@ export default function Page() {
       await loadProfile(nextAddress);
       return nextAddress;
     } catch (error) {
-      setClaimState({ loading: false, message: error.message || 'Wallet connection failed.' });
+      if (typeof window !== 'undefined') {
+        if (error?.code === 4001) {
+          window.alert('MetaMask connection was cancelled.');
+        } else {
+          window.alert(error.message || 'Wallet connection failed.');
+        }
+      }
       return '';
     }
   }
@@ -495,7 +509,7 @@ export default function Page() {
             </button>
           ) : (
             <button type="button" className="connect-chip" onClick={handleConnectWallet}>
-              Connect MetaMask
+              Connect
             </button>
           )}
         </div>
@@ -664,7 +678,7 @@ export default function Page() {
             <div className="empty-state glass-panel">
               <p className="eyebrow">Archive empty</p>
               <h3>No records yet.</h3>
-              <p className="floating-panel-copy">Connect MetaMask, pass Presence, and write the first permanent record.</p>
+              <p className="floating-panel-copy">Connect, pass Presence, and write the first permanent record.</p>
             </div>
           )}
         </section>
