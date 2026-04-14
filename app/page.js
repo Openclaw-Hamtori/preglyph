@@ -262,17 +262,22 @@ export default function Page() {
       if (!nextAddress) {
         throw new Error('MetaMask did not return a wallet address.');
       }
-      await ensureWriterReady(nextAddress);
       setWalletAddress(nextAddress);
       setActivePanel('profile');
       await loadProfile(nextAddress);
       return nextAddress;
     } catch (error) {
       if (typeof window !== 'undefined') {
+        console.error('MetaMask connect failed', {
+          code: error?.code,
+          message: error?.message,
+          error,
+        });
         if (error?.code === 4001) {
           window.alert('MetaMask connection was cancelled.');
         } else {
-          window.alert(error.message || 'Wallet connection failed.');
+          const detail = error?.message || 'Wallet connection failed.';
+          window.alert(`Connect failed: ${detail}`);
         }
       }
       return '';
@@ -408,7 +413,7 @@ export default function Page() {
 
       <div className="archive-count" aria-label="Total preglyph count">
         <span className="archive-count-label">Total Preglyphs</span>
-        <strong>{records.length}</strong>
+        <span className="archive-count-value">{records.length}</span>
       </div>
 
       <main id="top" className="main-layout">

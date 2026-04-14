@@ -44,7 +44,7 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata = {
-  title: 'Public archive — Preglyph',
+  title: 'Preglyph — Public archive',
   description:
     'Preglyph is a public archive for short permanent onchain records.',
 };

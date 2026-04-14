@@ -161,16 +161,16 @@ button {
   text-align: center;
 }
 
-.archive-count-label {
-  font-size: 0.72rem;
+.archive-count-label,
+.archive-count-value {
+  font-size: 0.68rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  color: var(--muted);
 }
 
-.archive-count strong {
-  color: var(--text);
-  font-size: 1.1rem;
-  font-weight: 600;
+.archive-count-value {
+  font-weight: 500;
 }
 
 .brand-copy strong {
