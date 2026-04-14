@@ -173,6 +173,67 @@ button {
   font-weight: 500;
 }
 
+.debug-panel {
+  margin-top: 12px;
+  padding: 16px 18px;
+}
+
+.debug-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.debug-panel-head h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.debug-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 193, 225, 0.12);
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.debug-row {
+  display: grid;
+  gap: 4px;
+}
+
+.debug-row span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.debug-row strong {
+  font-size: 0.83rem;
+  font-weight: 500;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.debug-row-wide {
+  grid-column: 1 / -1;
+}
+
 .brand-copy strong {
   font-size: 1rem;
   letter-spacing: -0.03em;
@@ -930,6 +991,10 @@ time,
   .archive-count {
     margin-top: 12px;
     gap: 8px;
+  }
+
+  .debug-grid {
+    grid-template-columns: 1fr;
   }
 
   .nav,

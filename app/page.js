@@ -108,6 +108,19 @@ export default function Page() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [profile, setProfile] = useState(null);
   const connectPromiseRef = useRef(null);
+  const [walletDebug, setWalletDebug] = useState({
+    providerDetected: false,
+    providerRdns: '',
+    selectedAddress: '',
+    chainId: '',
+    probeStatus: 'idle',
+    lastEthAccounts: [],
+    lastPermissions: [],
+    lastErrorCode: '',
+    lastErrorMessage: '',
+    lastErrorAt: '',
+    lastEvent: 'init',
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
@@ -197,22 +210,64 @@ export default function Page() {
     setWalletProbeDone(false);
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) {
+      setWalletDebug((current) => ({
+        ...current,
+        providerDetected: false,
+        providerRdns: '',
+        selectedAddress: '',
+        chainId: '',
+        probeStatus: 'no_provider',
+        lastEvent: 'probe:no_provider',
+      }));
       setWalletProbeDone(true);
       return undefined;
     }
 
     let cancelled = false;
 
+    const snapshotProvider = async (eventLabel, extra = {}) => {
+      let permissions = [];
+      try {
+        permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+      } catch {}
+
+      if (cancelled) return;
+
+      setWalletDebug((current) => ({
+        ...current,
+        providerDetected: true,
+        providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+        selectedAddress: metamaskProvider?.selectedAddress || '',
+        chainId: metamaskProvider?.chainId || '',
+        lastPermissions: permissions,
+        lastEvent: eventLabel,
+        ...extra,
+      }));
+    };
+
     const syncWalletState = async () => {
+      setWalletDebug((current) => ({ ...current, probeStatus: 'probing', lastEvent: 'probe:start' }));
       try {
         const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
         if (cancelled) return;
         const nextAddress = accounts?.[0] || '';
+        await snapshotProvider('probe:success', {
+          probeStatus: nextAddress ? 'connected' : 'disconnected',
+          lastEthAccounts: accounts || [],
+          lastErrorCode: '',
+          lastErrorMessage: '',
+        });
         setWalletAddress(nextAddress);
         setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
         await loadProfile(nextAddress);
-      } catch {
+      } catch (error) {
         if (cancelled) return;
+        await snapshotProvider('probe:error', {
+          probeStatus: 'error',
+          lastErrorCode: String(error?.code || ''),
+          lastErrorMessage: error?.message || 'Unknown probe error',
+          lastErrorAt: new Date().toISOString(),
+        });
         setWalletAddress('');
         setProfile(null);
       } finally {
@@ -222,12 +277,24 @@ export default function Page() {
 
     const handleAccountsChanged = (accounts) => {
       const nextAddress = accounts?.[0] || '';
+      setWalletDebug((current) => ({
+        ...current,
+        selectedAddress: nextAddress,
+        lastEthAccounts: accounts || [],
+        probeStatus: nextAddress ? 'connected' : 'disconnected',
+        lastEvent: 'event:accountsChanged',
+      }));
       setWalletAddress(nextAddress);
       setActivePanel((current) => (nextAddress ? current || 'profile' : current === 'profile' ? '' : current));
       loadProfile(nextAddress);
     };
 
     const handleChainChanged = () => {
+      setWalletDebug((current) => ({
+        ...current,
+        chainId: metamaskProvider?.chainId || '',
+        lastEvent: 'event:chainChanged',
+      }));
       loadRecords();
       syncWalletState();
     };
@@ -301,18 +368,61 @@ export default function Page() {
 
     const connectPromise = (async () => {
       setIsConnecting(true);
+      setWalletDebug((current) => ({
+        ...current,
+        lastEvent: 'connect:start',
+        lastErrorCode: '',
+        lastErrorMessage: '',
+      }));
       try {
         const existingAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
         if (existingAccounts?.[0]) {
+          let permissions = [];
+          try {
+            permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          } catch {}
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: existingAccounts?.[0] || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastEthAccounts: existingAccounts || [],
+            lastPermissions: permissions,
+            probeStatus: 'connected',
+            lastEvent: 'connect:reuse-existing',
+          }));
           return hydrateConnectedWallet(existingAccounts);
         }
 
         const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
+        let permissions = [];
+        try {
+          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+        } catch {}
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: true,
+          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+          selectedAddress: accounts?.[0] || '',
+          chainId: metamaskProvider?.chainId || '',
+          lastEthAccounts: accounts || [],
+          lastPermissions: permissions,
+          probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
+          lastEvent: 'connect:requestAccounts-success',
+        }));
         return hydrateConnectedWallet(accounts);
       } catch (error) {
         try {
           const fallbackAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
           if (fallbackAccounts?.[0]) {
+            setWalletDebug((current) => ({
+              ...current,
+              selectedAddress: fallbackAccounts?.[0] || '',
+              lastEthAccounts: fallbackAccounts || [],
+              probeStatus: 'connected',
+              lastEvent: 'connect:fallback-eth_accounts',
+            }));
             return await hydrateConnectedWallet(fallbackAccounts);
           }
         } catch {}
@@ -329,6 +439,19 @@ export default function Page() {
             permissions,
             error,
           });
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: metamaskProvider?.selectedAddress || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastPermissions: permissions,
+            lastErrorCode: String(error?.code || ''),
+            lastErrorMessage: error?.message || 'Unexpected error',
+            lastErrorAt: new Date().toISOString(),
+            lastEvent: 'connect:error',
+            probeStatus: 'error',
+          }));
           if (error?.code === 4001) {
             window.alert('MetaMask connection was cancelled.');
           } else if (error?.code === -32002) {
@@ -379,6 +502,13 @@ export default function Page() {
     setProfile(null);
     setActivePanel('');
     setWalletProbeDone(true);
+    setWalletDebug((current) => ({
+      ...current,
+      selectedAddress: '',
+      lastEthAccounts: [],
+      lastEvent: 'disconnect',
+      probeStatus: 'disconnected',
+    }));
   }
 
   async function handleSearch(event) {
@@ -498,6 +628,32 @@ export default function Page() {
         <span className="archive-count-label">Total Preglyphs</span>
         <span className="archive-count-value">{records.length}</span>
       </div>
+
+      <section className="debug-panel glass-panel" aria-label="MetaMask debug panel">
+        <div className="debug-panel-head">
+          <div>
+            <p className="eyebrow">Debug</p>
+            <h3>Wallet session</h3>
+          </div>
+          <span className="debug-badge">temporary</span>
+        </div>
+        <div className="debug-grid">
+          <div className="debug-row"><span>provider</span><strong>{walletDebug.providerDetected ? 'detected' : 'missing'}</strong></div>
+          <div className="debug-row"><span>provider rdns</span><strong>{walletDebug.providerRdns || '—'}</strong></div>
+          <div className="debug-row"><span>probe</span><strong>{walletDebug.probeStatus}</strong></div>
+          <div className="debug-row"><span>wallet state</span><strong>{walletAddress || '—'}</strong></div>
+          <div className="debug-row"><span>selectedAddress</span><strong>{walletDebug.selectedAddress || '—'}</strong></div>
+          <div className="debug-row"><span>chainId</span><strong>{walletDebug.chainId || '—'}</strong></div>
+          <div className="debug-row"><span>probe done</span><strong>{walletProbeDone ? 'true' : 'false'}</strong></div>
+          <div className="debug-row"><span>isConnecting</span><strong>{isConnecting ? 'true' : 'false'}</strong></div>
+          <div className="debug-row"><span>last event</span><strong>{walletDebug.lastEvent}</strong></div>
+          <div className="debug-row"><span>last error code</span><strong>{walletDebug.lastErrorCode || '—'}</strong></div>
+          <div className="debug-row debug-row-wide"><span>last error message</span><strong>{walletDebug.lastErrorMessage || '—'}</strong></div>
+          <div className="debug-row debug-row-wide"><span>eth_accounts</span><strong>{walletDebug.lastEthAccounts.length ? walletDebug.lastEthAccounts.join(', ') : '[]'}</strong></div>
+          <div className="debug-row debug-row-wide"><span>permissions</span><strong>{walletDebug.lastPermissions.length ? JSON.stringify(walletDebug.lastPermissions) : '[]'}</strong></div>
+          <div className="debug-row debug-row-wide"><span>last error at</span><strong>{walletDebug.lastErrorAt || '—'}</strong></div>
+        </div>
+      </section>
 
       <main id="top" className="main-layout">
         {activePanel === 'profile' ? (
