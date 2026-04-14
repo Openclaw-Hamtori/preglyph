@@ -12,6 +12,7 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
+const LAST_CONNECTED_WALLET_KEY = 'preglyph:last-connected-wallet';
 function getMetaMaskProvider() {
   if (typeof window === 'undefined') return null;
   const injected = window.ethereum;
@@ -105,6 +106,7 @@ export default function Page() {
   const [activeRecord, setActiveRecord] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
   const [walletProbeDone, setWalletProbeDone] = useState(false);
+  const [rememberedWallet, setRememberedWallet] = useState('');
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -192,6 +194,13 @@ export default function Page() {
   }, [searchQuery]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const remembered = window.localStorage.getItem(LAST_CONNECTED_WALLET_KEY) || '';
+    setRememberedWallet(remembered);
+  }, []);
+
+  useEffect(() => {
+    setWalletProbeDone(false);
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) {
       setWalletProbeDone(true);
@@ -202,6 +211,14 @@ export default function Page() {
       const nextAddress = accounts?.[0] || '';
       setWalletAddress(nextAddress);
       setActivePanel(nextAddress ? 'profile' : '');
+      if (typeof window !== 'undefined') {
+        if (nextAddress) {
+          window.localStorage.setItem(LAST_CONNECTED_WALLET_KEY, nextAddress);
+        } else {
+          window.localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+        }
+      }
+      setRememberedWallet(nextAddress);
       loadProfile(nextAddress);
     };
 
@@ -211,19 +228,41 @@ export default function Page() {
       if (activeAddress) loadProfile(activeAddress);
     };
 
-    metamaskProvider
-      .request({ method: 'eth_accounts' })
-      .then(handleAccountsChanged)
-      .catch(() => {})
-      .finally(() => setWalletProbeDone(true));
+    let cancelled = false;
+
+    const probeWalletSession = async () => {
+      const maxAttempts = rememberedWallet ? 5 : 1;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        try {
+          const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
+          if (cancelled) return;
+
+          if (accounts?.[0] || attempt === maxAttempts - 1) {
+            handleAccountsChanged(accounts);
+            setWalletProbeDone(true);
+            return;
+          }
+        } catch {
+          if (cancelled) return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+
+      if (!cancelled) setWalletProbeDone(true);
+    };
+
+    probeWalletSession();
     metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
     metamaskProvider.on?.('chainChanged', handleChainChanged);
 
     return () => {
+      cancelled = true;
       metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
     };
-  }, []);
+  }, [rememberedWallet]);
 
   async function ensureWalletOnExpectedChain(provider, metamaskProvider) {
     const networkInfo = await provider.getNetwork();
@@ -273,6 +312,11 @@ export default function Page() {
       }
       setWalletAddress(nextAddress);
       setActivePanel('profile');
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(LAST_CONNECTED_WALLET_KEY, nextAddress);
+      }
+      setRememberedWallet(nextAddress);
+      setWalletProbeDone(true);
       await loadProfile(nextAddress);
       return nextAddress;
     } catch (error) {
@@ -305,6 +349,29 @@ export default function Page() {
     await ensureWriterReady(nextAddress);
     await loadProfile(nextAddress);
     setActivePanel('write');
+  }
+
+  async function handleDisconnectWallet() {
+    const metamaskProvider = getMetaMaskProvider();
+
+    try {
+      await metamaskProvider?.request?.({
+        method: 'wallet_revokePermissions',
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Some MetaMask builds do not support programmatic revoke; local disconnect still applies.
+    }
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+    }
+
+    setRememberedWallet('');
+    setWalletAddress('');
+    setProfile(null);
+    setActivePanel('');
+    setWalletProbeDone(true);
   }
 
   async function handleSearch(event) {
@@ -414,7 +481,7 @@ export default function Page() {
             </button>
           ) : (
             <button type="button" className="connect-chip" onClick={handleConnectWallet} disabled={!walletProbeDone}>
-              {walletProbeDone ? 'Connect' : 'Checking…'}
+              {walletProbeDone ? 'Connect' : rememberedWallet ? 'Restoring…' : 'Checking…'}
             </button>
           )}
         </div>
@@ -442,6 +509,11 @@ export default function Page() {
                 <p className="eyebrow">Wallet</p>
                 <strong>{walletAddress || 'Not connected'}</strong>
                 <span>{profile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
+                <div className="profile-actions">
+                  <button type="button" className="ghost-chip" onClick={handleDisconnectWallet}>
+                    Disconnect MetaMask
+                  </button>
+                </div>
               </div>
             </div>
             <div className="profile-records">
