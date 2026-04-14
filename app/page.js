@@ -59,6 +59,16 @@ function truncateAddress(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function getPermissionAccounts(permissions = []) {
+  const ethAccountsPermission = Array.isArray(permissions)
+    ? permissions.find((permission) => permission?.parentCapability === 'eth_accounts')
+    : null;
+  const restrictReturnedAccounts = ethAccountsPermission?.caveats?.find(
+    (caveat) => caveat?.type === 'restrictReturnedAccounts',
+  );
+  return Array.isArray(restrictReturnedAccounts?.value) ? restrictReturnedAccounts.value : [];
+}
+
 function relativeTimeFromUnix(timestamp) {
   if (!timestamp) return 'pending';
   const diffSeconds = Math.max(1, Math.floor(Date.now() / 1000 - timestamp));
@@ -250,10 +260,17 @@ export default function Page() {
       try {
         const accounts = await metamaskProvider.request({ method: 'eth_accounts' });
         if (cancelled) return;
-        const nextAddress = accounts?.[0] || '';
+        let permissions = [];
+        try {
+          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+        } catch {}
+        const permissionAccounts = getPermissionAccounts(permissions);
+        const resolvedAccounts = accounts?.[0] ? accounts : permissionAccounts;
+        const nextAddress = resolvedAccounts?.[0] || '';
         await snapshotProvider('probe:success', {
           probeStatus: nextAddress ? 'connected' : 'disconnected',
-          lastEthAccounts: accounts || [],
+          lastEthAccounts: resolvedAccounts || [],
+          lastPermissions: permissions,
           lastErrorCode: '',
           lastErrorMessage: '',
         });
@@ -376,23 +393,25 @@ export default function Page() {
       }));
       try {
         const existingAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
-        if (existingAccounts?.[0]) {
-          let permissions = [];
-          try {
-            permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
-          } catch {}
+        let permissions = [];
+        try {
+          permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+        } catch {}
+        const permissionAccounts = getPermissionAccounts(permissions);
+        const reusableAccounts = existingAccounts?.[0] ? existingAccounts : permissionAccounts;
+        if (reusableAccounts?.[0]) {
           setWalletDebug((current) => ({
             ...current,
             providerDetected: true,
             providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: existingAccounts?.[0] || '',
+            selectedAddress: reusableAccounts?.[0] || '',
             chainId: metamaskProvider?.chainId || '',
-            lastEthAccounts: existingAccounts || [],
+            lastEthAccounts: reusableAccounts || [],
             lastPermissions: permissions,
             probeStatus: 'connected',
             lastEvent: 'connect:reuse-existing',
           }));
-          return hydrateConnectedWallet(existingAccounts);
+          return hydrateConnectedWallet(reusableAccounts);
         }
 
         const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
