@@ -517,12 +517,15 @@ export default function Page() {
       try {
         let existingAccounts = [];
         let permissions = [];
+        let hadTransientPreflightError = false;
+
         try {
-          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 2, delayMs: 250 });
+          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 1, delayMs: 250 });
         } catch (error) {
           if (!isTransientMetaMaskStartupError(error)) {
             throw error;
           }
+          hadTransientPreflightError = true;
           setWalletDebug((current) => ({
             ...current,
             providerDetected: true,
@@ -535,27 +538,42 @@ export default function Page() {
             lastEvent: 'connect:preflight-eth_accounts-error',
           }));
         }
-        try {
-          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
-        } catch {}
-        const permissionAccounts = getPermissionAccounts(permissions);
-        const reusableAccounts = existingAccounts?.[0] ? existingAccounts : permissionAccounts;
-        if (reusableAccounts?.[0]) {
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: reusableAccounts?.[0] || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastEthAccounts: reusableAccounts || [],
-            lastPermissions: permissions,
-            probeStatus: 'connected',
-            lastEvent: 'connect:reuse-existing',
-          }));
-          return hydrateConnectedWallet(reusableAccounts);
+
+        if (!hadTransientPreflightError) {
+          try {
+            permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
+          } catch {}
+          const permissionAccounts = getPermissionAccounts(permissions);
+          const reusableAccounts = existingAccounts?.[0] ? existingAccounts : permissionAccounts;
+          if (reusableAccounts?.[0]) {
+            setWalletDebug((current) => ({
+              ...current,
+              providerDetected: true,
+              providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+              selectedAddress: reusableAccounts?.[0] || '',
+              chainId: metamaskProvider?.chainId || '',
+              lastEthAccounts: reusableAccounts || [],
+              lastPermissions: permissions,
+              probeStatus: 'connected',
+              lastEvent: 'connect:reuse-existing',
+            }));
+            return hydrateConnectedWallet(reusableAccounts);
+          }
         }
 
-        const accounts = await requestWithRetry(metamaskProvider, 'eth_requestAccounts', { attempts: 2, delayMs: 400 });
+        if (hadTransientPreflightError) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: true,
+          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+          selectedAddress: metamaskProvider?.selectedAddress || '',
+          chainId: metamaskProvider?.chainId || '',
+          lastEvent: hadTransientPreflightError ? 'connect:requestAccounts-after-preflight-error' : 'connect:requestAccounts-start',
+        }));
+        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
