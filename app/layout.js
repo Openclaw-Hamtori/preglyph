@@ -44,9 +44,9 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata = {
-  title: 'Preglyph — verified humans leave public records',
+  title: 'Public archive — Preglyph',
   description:
-    'Preglyph is a minimal writing surface where only verified humans can leave durable public records.',
+    'Preglyph is a public archive for short permanent onchain records.',
 };
 
 export default function RootLayout({ children }) {

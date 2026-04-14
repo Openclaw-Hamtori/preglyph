@@ -99,26 +99,6 @@ function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersio
   );
 }
 
-function CenterModal({ title, body, onClose }) {
-  return (
-    <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="detail-dim" onClick={onClose} />
-      <div className="detail-panel glass-panel info-modal">
-        <button type="button" className="detail-close" onClick={onClose}>
-          Close
-        </button>
-        <div className="floating-panel-head">
-          <div>
-            <p className="eyebrow">Preglyph</p>
-            <h3>{title}</h3>
-          </div>
-        </div>
-        <p className="floating-panel-copy">{body}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function Page() {
   const [records, setRecords] = useState([]);
   const [network, setNetwork] = useState(null);
@@ -282,8 +262,6 @@ export default function Page() {
       if (!nextAddress) {
         throw new Error('MetaMask did not return a wallet address.');
       }
-      const provider = new BrowserProvider(metamaskProvider);
-      await ensureWalletOnExpectedChain(provider, metamaskProvider);
       await ensureWriterReady(nextAddress);
       setWalletAddress(nextAddress);
       setActivePanel('profile');
@@ -413,9 +391,6 @@ export default function Page() {
         </form>
 
         <div className="nav nav-actions">
-          <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'how' ? '' : 'how')}>
-            How it works
-          </button>
           <button type="button" className="nav-link" onClick={handleOpenWriteFlow}>
             Write
           </button>
@@ -431,15 +406,12 @@ export default function Page() {
         </div>
       </header>
 
-      <main id="top" className="main-layout">
+      <div className="archive-count" aria-label="Total preglyph count">
+        <span className="archive-count-label">Total Preglyphs</span>
+        <strong>{records.length}</strong>
+      </div>
 
-        {activePanel === 'how' ? (
-          <CenterModal
-            title="How it works"
-            body="1. Connect with MetaMask. 2. Open Write. 3. Sign the transaction. 4. Your record is written to Ethereum. 5. Search by tx hash or record text and revisit your archive from Profile."
-            onClose={() => setActivePanel('')}
-          />
-        ) : null}
+      <main id="top" className="main-layout">
         {activePanel === 'profile' ? (
           <div className="floating-panel glass-panel profile-panel">
             <div className="floating-panel-head">
