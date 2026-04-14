@@ -287,24 +287,46 @@ export default function Page() {
       return connectPromiseRef.current;
     }
 
+    const hydrateConnectedWallet = async (accounts) => {
+      const nextAddress = accounts?.[0] || '';
+      if (!nextAddress) {
+        throw new Error('MetaMask did not return a wallet address.');
+      }
+      setWalletAddress(nextAddress);
+      setActivePanel('profile');
+      setWalletProbeDone(true);
+      await loadProfile(nextAddress);
+      return nextAddress;
+    };
+
     const connectPromise = (async () => {
       setIsConnecting(true);
       try {
-        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
-        const nextAddress = accounts?.[0] || '';
-        if (!nextAddress) {
-          throw new Error('MetaMask did not return a wallet address.');
+        const existingAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
+        if (existingAccounts?.[0]) {
+          return hydrateConnectedWallet(existingAccounts);
         }
-        setWalletAddress(nextAddress);
-        setActivePanel('profile');
-        setWalletProbeDone(true);
-        await loadProfile(nextAddress);
-        return nextAddress;
+
+        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
+        return hydrateConnectedWallet(accounts);
       } catch (error) {
+        try {
+          const fallbackAccounts = await metamaskProvider.request({ method: 'eth_accounts' });
+          if (fallbackAccounts?.[0]) {
+            return await hydrateConnectedWallet(fallbackAccounts);
+          }
+        } catch {}
+
         if (typeof window !== 'undefined') {
+          let permissions = [];
+          try {
+            permissions = await metamaskProvider.request({ method: 'wallet_getPermissions' });
+          } catch {}
+
           console.error('MetaMask connect failed', {
             code: error?.code,
             message: error?.message,
+            permissions,
             error,
           });
           if (error?.code === 4001) {
