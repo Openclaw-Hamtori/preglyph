@@ -208,7 +208,6 @@ export default function Page() {
   useEffect(() => {
     if (searchQuery.trim()) return;
     setSearchResults(null);
-    setSearchStatus('');
   }, [searchQuery]);
 
   useEffect(() => {
@@ -552,7 +551,7 @@ export default function Page() {
               </div>
               <div className="detail-time-block">
                 <p className="eyebrow">Recorded at</p>
-                <span>{formatRecordedAt(activeRecord.createdAt)}</span>
+                <span>{new Intl.DateTimeFormat('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(activeRecord.createdAt * 1000))}</span>
               </div>
             </div>
             <div className="detail-tx glass-subpanel">
