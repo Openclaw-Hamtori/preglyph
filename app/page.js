@@ -42,6 +42,21 @@ function getMetaMaskProvider() {
   );
 }
 
+function isProbablyMobile() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+}
+
+function openMetaMaskInstall() {
+  if (typeof window === 'undefined') return;
+  const dappUrl = 'preglyph.com';
+  if (isProbablyMobile()) {
+    window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
+    return;
+  }
+  window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
+}
+
 function truncateAddress(address) {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -125,7 +140,6 @@ export default function Page() {
   const [activeRecord, setActiveRecord] = useState(null);
   const [walletAddress, setWalletAddress] = useState('');
   const [profile, setProfile] = useState(null);
-  const [appStatus, setAppStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [composeText, setComposeText] = useState('');
@@ -146,10 +160,8 @@ export default function Page() {
       if (!response.ok) throw new Error(payload.error || 'Failed to load records.');
       setRecords(payload.records || []);
       setNetwork(payload.network || null);
-      setAppStatus('');
     } catch (error) {
       setRecords([]);
-      setAppStatus(error.message);
     }
   }
 
@@ -166,7 +178,6 @@ export default function Page() {
       setProfile(payload.profile);
     } catch (error) {
       setProfile(null);
-      setAppStatus(error.message);
     }
   }
 
@@ -256,7 +267,8 @@ export default function Page() {
   async function handleConnectWallet() {
     const metamaskProvider = getMetaMaskProvider();
     if (!metamaskProvider) {
-      setAppStatus('MetaMask is required for wallet connect.');
+      setClaimState({ loading: false, message: 'MetaMask is required. Opening MetaMask…' });
+      openMetaMaskInstall();
       return '';
     }
 
@@ -268,10 +280,9 @@ export default function Page() {
       setWalletAddress(nextAddress);
       setActivePanel('profile');
       await loadProfile(nextAddress);
-      setAppStatus('');
       return nextAddress;
     } catch (error) {
-      setAppStatus(error.message || 'Wallet connection failed.');
+      setClaimState({ loading: false, message: error.message || 'Wallet connection failed.' });
       return '';
     }
   }
@@ -505,9 +516,8 @@ export default function Page() {
           </div>
         </section>
 
-        {(appStatus || searchStatus || composeState.message || claimState.message) && (
+        {(searchStatus || composeState.message || claimState.message) && (
           <section className="status-stack">
-            {appStatus ? <p className="status-banner error">{appStatus}</p> : null}
             {searchStatus ? <p className="status-banner">{searchStatus}</p> : null}
             {claimState.message ? <p className="status-banner">{claimState.message}</p> : null}
             {composeState.message ? <p className="status-banner">{composeState.message}</p> : null}
