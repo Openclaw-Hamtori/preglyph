@@ -15,6 +15,33 @@ const MAX_RECORD_LENGTH = 280;
 const ABOUT_COPY =
   'Preglyph is a public archive where only Presence-passed humans can leave short permanent records on Ethereum.';
 
+function getMetaMaskProvider() {
+  if (typeof window === 'undefined') return null;
+  const injected = window.ethereum;
+  if (!injected) return null;
+
+  const providers = Array.isArray(injected.providers) && injected.providers.length ? injected.providers : [injected];
+
+  const byRdns = providers.find((provider) => provider?.providerInfo?.rdns === 'io.metamask');
+  if (byRdns) return byRdns;
+
+  return (
+    providers.find(
+      (provider) =>
+        provider?.isMetaMask &&
+        !provider?.isAvalanche &&
+        !provider?.isBraveWallet &&
+        !provider?.isCoinbaseWallet &&
+        !provider?.isOkxWallet &&
+        !provider?.isOKExWallet &&
+        !provider?.isOKXWallet &&
+        !provider?.isRabby &&
+        !provider?.isTokenPocket &&
+        !provider?.isTrust,
+    ) || null
+  );
+}
+
 function truncateAddress(address) {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -99,7 +126,7 @@ export default function Page() {
   const [walletAddress, setWalletAddress] = useState('');
   const [profile, setProfile] = useState(null);
   const [appStatus, setAppStatus] = useState('');
-  const [searchTxHash, setSearchTxHash] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
@@ -171,7 +198,8 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    if (!window.ethereum) return undefined;
+    const metamaskProvider = getMetaMaskProvider();
+    if (!metamaskProvider) return undefined;
 
     const handleAccountsChanged = (accounts) => {
       const nextAddress = accounts?.[0] || '';
@@ -185,29 +213,29 @@ export default function Page() {
       if (walletAddress) loadProfile(walletAddress);
     };
 
-    window.ethereum.request({ method: 'eth_accounts' }).then(handleAccountsChanged).catch(() => {});
-    window.ethereum.on?.('accountsChanged', handleAccountsChanged);
-    window.ethereum.on?.('chainChanged', handleChainChanged);
+    metamaskProvider.request({ method: 'eth_accounts' }).then(handleAccountsChanged).catch(() => {});
+    metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
+    metamaskProvider.on?.('chainChanged', handleChainChanged);
 
     return () => {
-      window.ethereum.removeListener?.('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener?.('chainChanged', handleChainChanged);
+      metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
+      metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
     };
   }, [walletAddress]);
 
-  async function ensureWalletOnExpectedChain(provider) {
+  async function ensureWalletOnExpectedChain(provider, metamaskProvider) {
     const networkInfo = await provider.getNetwork();
     if (Number(networkInfo.chainId) === CLIENT_CHAIN_ID) return;
 
     const chainHex = `0x${CLIENT_CHAIN_ID.toString(16)}`;
     try {
-      await window.ethereum.request({
+      await metamaskProvider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: chainHex }],
       });
     } catch (error) {
       if (error?.code !== 4902) throw error;
-      await window.ethereum.request({
+      await metamaskProvider.request({
         method: 'wallet_addEthereumChain',
         params: [
           {
@@ -226,21 +254,25 @@ export default function Page() {
   }
 
   async function handleConnectWallet() {
-    if (!window.ethereum) {
+    const metamaskProvider = getMetaMaskProvider();
+    if (!metamaskProvider) {
       setAppStatus('MetaMask is required for wallet connect.');
-      return;
+      return '';
     }
 
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
       const nextAddress = accounts?.[0] || '';
-      const provider = new BrowserProvider(window.ethereum);
-      await ensureWalletOnExpectedChain(provider);
+      const provider = new BrowserProvider(metamaskProvider);
+      await ensureWalletOnExpectedChain(provider, metamaskProvider);
       setWalletAddress(nextAddress);
       setActivePanel('profile');
       await loadProfile(nextAddress);
+      setAppStatus('');
+      return nextAddress;
     } catch (error) {
       setAppStatus(error.message || 'Wallet connection failed.');
+      return '';
     }
   }
 
@@ -266,8 +298,9 @@ export default function Page() {
     }
   }
 
-  async function handleCreatePresenceRequest() {
-    if (!walletAddress) {
+  async function handleCreatePresenceRequest(addressOverride = '') {
+    const targetAddress = addressOverride || walletAddress;
+    if (!targetAddress) {
       setClaimState({ loading: false, message: 'Connect a wallet first.' });
       return;
     }
@@ -277,7 +310,7 @@ export default function Page() {
       const response = await fetch('/api/presence/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: walletAddress }),
+        body: JSON.stringify({ address: targetAddress }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Failed to create Presence request.');
@@ -311,30 +344,56 @@ export default function Page() {
     }
   }
 
+  async function handleOpenWriteFlow() {
+    setComposeState({ loading: false, message: '' });
+
+    let nextAddress = walletAddress;
+    if (!nextAddress) {
+      nextAddress = await handleConnectWallet();
+      if (!nextAddress) return;
+    }
+
+    setActivePanel('write');
+
+    if (!profile?.presence?.passed) {
+      await handleCreatePresenceRequest(nextAddress);
+    }
+  }
+
   async function handleSearch(event) {
     event.preventDefault();
-    if (!searchTxHash.trim()) {
-      setSearchStatus('Enter a transaction hash.');
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchStatus('Enter a transaction hash or record text.');
       return;
     }
 
+    const isTxHash = /^0x([A-Fa-f0-9]{64})$/.test(query);
+
     try {
-      setSearchStatus('Searching transaction…');
-      const response = await fetch(`/api/records/search?txHash=${encodeURIComponent(searchTxHash.trim())}`, {
-        cache: 'no-store',
-      });
+      setSearchStatus(isTxHash ? 'Searching transaction…' : 'Searching archive…');
+      const params = new URLSearchParams(isTxHash ? { txHash: query } : { q: query });
+      const response = await fetch(`/api/records/search?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Transaction not found.');
-      setActiveRecord(payload.record);
-      setSearchStatus('Record found.');
+      if (!response.ok) throw new Error(payload.error || 'Search failed.');
+
+      if (payload.record) {
+        setActiveRecord(payload.record);
+        setSearchStatus('Record found.');
+        return;
+      }
+
+      setRecords(payload.records || []);
+      setSearchStatus(`${payload.records?.length || 0} records found.`);
     } catch (error) {
-      setSearchStatus(error.message || 'Transaction search failed.');
+      setSearchStatus(error.message || 'Search failed.');
     }
   }
 
   async function handleComposeSubmit(event) {
     event.preventDefault();
-    if (!window.ethereum) {
+    const metamaskProvider = getMetaMaskProvider();
+    if (!metamaskProvider) {
       setComposeState({ loading: false, message: 'MetaMask is required to write.' });
       return;
     }
@@ -359,8 +418,8 @@ export default function Page() {
 
     try {
       setComposeState({ loading: true, message: 'Preparing transaction…' });
-      const provider = new BrowserProvider(window.ethereum);
-      await ensureWalletOnExpectedChain(provider);
+      const provider = new BrowserProvider(metamaskProvider);
+      await ensureWalletOnExpectedChain(provider, metamaskProvider);
       const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
       const tx = await contract.writeRecord(content);
@@ -368,7 +427,8 @@ export default function Page() {
       const receipt = await tx.wait();
       await Promise.all([loadRecords(), loadProfile(walletAddress)]);
       setComposeText('');
-      setSearchTxHash(receipt.hash);
+      setSearchQuery(receipt.hash);
+      setActivePanel('');
       setComposeState({ loading: false, message: `Record confirmed onchain: ${receipt.hash}` });
       setSearchStatus('Latest record transaction is ready to inspect.');
     } catch (error) {
@@ -392,9 +452,9 @@ export default function Page() {
             <SearchIcon />
             <input
               type="text"
-              value={searchTxHash}
-              onChange={(event) => setSearchTxHash(event.target.value)}
-              placeholder="Search transaction hash"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search tx hash or content"
             />
           </label>
           <button type="submit" className="ghost-chip">
@@ -409,13 +469,16 @@ export default function Page() {
           <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'how' ? '' : 'how')}>
             How it works
           </button>
+          <button type="button" className="nav-link" onClick={handleOpenWriteFlow}>
+            Write
+          </button>
           {walletAddress ? (
             <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'profile' ? '' : 'profile')}>
               Profile
             </button>
           ) : (
             <button type="button" className="connect-chip" onClick={handleConnectWallet}>
-              Connect
+              Connect MetaMask
             </button>
           )}
         </div>
@@ -457,7 +520,7 @@ export default function Page() {
         {activePanel === 'how' ? (
           <Panel
             title="How it works"
-            body="1. Connect your wallet. 2. Pass Presence verification. 3. The service grants onchain writer access. 4. Write a short record to Ethereum. 5. Search tx hashes and revisit your archive from Profile."
+            body="1. Connect with MetaMask. 2. Open Write. 3. Complete Presence verification if required. 4. Write a short record to Ethereum. 5. Search by tx hash or record text and revisit your archive from Profile."
             onClose={() => setActivePanel('')}
           />
         ) : null}
@@ -532,28 +595,65 @@ export default function Page() {
           </div>
         ) : null}
 
-        <section className="composer glass-panel">
-          <div className="section-row">
-            <div>
-              <p className="eyebrow">Write to Ethereum</p>
-              <h2>Only Presence-passed wallets can inscribe.</h2>
-            </div>
-            <span className={`gate-pill ${isWriter ? 'unlocked' : 'locked'}`}>{isWriter ? 'Unlocked' : 'Locked'}</span>
-          </div>
-          <form className="compose-form" onSubmit={handleComposeSubmit}>
-            <textarea
-              value={composeText}
-              onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
-              placeholder="Write a short permanent public record…"
-            />
-            <div className="compose-footer">
-              <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
-              <button type="submit" className="connect-chip" disabled={composeState.loading || !isWriter}>
-                {composeState.loading ? 'Writing…' : 'Write onchain'}
+        {activePanel === 'write' ? (
+          <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
+            <div className="detail-dim" onClick={() => setActivePanel('')} />
+            <div className="detail-panel glass-panel write-modal">
+              <button type="button" className="detail-close" onClick={() => setActivePanel('')}>
+                Close
               </button>
+              <div className="floating-panel-head">
+                <div>
+                  <p className="eyebrow">Write to Ethereum</p>
+                  <h3>{isWriter ? 'Write a permanent record' : 'Presence verification required'}</h3>
+                </div>
+                <span className={`gate-pill ${isWriter ? 'unlocked' : 'locked'}`}>{isWriter ? 'Unlocked' : 'Locked'}</span>
+              </div>
+              {isWriter ? (
+                <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
+                  <textarea
+                    value={composeText}
+                    onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
+                    placeholder="Write a short permanent public record…"
+                  />
+                  <div className="compose-footer">
+                    <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
+                    <button type="submit" className="connect-chip" disabled={composeState.loading || !isWriter}>
+                      {composeState.loading ? 'Writing…' : 'Write onchain'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="write-gate-stack">
+                  <p className="floating-panel-copy">Only Presence-passed humans can write. Opening Write can create a Presence request for your connected wallet.</p>
+                  <div className="profile-actions wrap-actions">
+                    <button type="button" className="connect-chip" disabled={claimState.loading || !walletAddress} onClick={handlePresenceClaim}>
+                      {claimState.loading ? 'Verifying…' : 'Pass Presence sandbox'}
+                    </button>
+                    <button type="button" className="ghost-chip" disabled={claimState.loading || !walletAddress} onClick={handleCreatePresenceRequest}>
+                      Refresh live Presence request
+                    </button>
+                  </div>
+                  {presenceRequest ? (
+                    <div className="live-presence-panel glass-subpanel">
+                      <p className="eyebrow">Live Presence request</p>
+                      <code>{presenceRequest.requestId}</code>
+                      <span>nonce {presenceRequest.nonce}</span>
+                      <textarea
+                        value={liveProofText}
+                        onChange={(event) => setLiveProofText(event.target.value)}
+                        placeholder="Paste a real Presence signed proof JSON here after completing the mobile flow."
+                      />
+                      <button type="button" className="connect-chip" onClick={handleVerifyLivePresence}>
+                        Verify live proof
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
-          </form>
-        </section>
+          </div>
+        ) : null}
 
         <section className="slab-grid" aria-label="Public record slabs">
           {records.length ? (

@@ -781,6 +781,20 @@ time,
   font: inherit;
 }
 
+.write-modal {
+  width: min(720px, 100%);
+}
+
+.write-modal-form {
+  margin-top: 18px;
+}
+
+.write-gate-stack {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
 .composer {
   margin-top: 24px;
   padding: 24px;
