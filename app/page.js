@@ -117,19 +117,22 @@ function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersio
   );
 }
 
-function Panel({ title, body, onClose }) {
+function CenterModal({ title, body, onClose }) {
   return (
-    <div className="floating-panel glass-panel">
-      <div className="floating-panel-head">
-        <div>
-          <p className="eyebrow">Preglyph</p>
-          <h3>{title}</h3>
-        </div>
-        <button type="button" className="ghost-chip" onClick={onClose}>
+    <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="detail-dim" onClick={onClose} />
+      <div className="detail-panel glass-panel info-modal">
+        <button type="button" className="detail-close" onClick={onClose}>
           Close
         </button>
+        <div className="floating-panel-head">
+          <div>
+            <p className="eyebrow">Preglyph</p>
+            <h3>{title}</h3>
+          </div>
+        </div>
+        <p className="floating-panel-copy">{body}</p>
       </div>
-      <p className="floating-panel-copy">{body}</p>
     </div>
   );
 }
@@ -142,6 +145,7 @@ export default function Page() {
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [claimState, setClaimState] = useState({ loading: false, message: '' });
@@ -152,6 +156,7 @@ export default function Page() {
 
   const isWriter = Boolean(profile?.presence?.passed && profile?.onchainApproved);
   const profileRecords = profile?.records || [];
+  const displayedRecords = searchResults === null ? records : searchResults;
 
   async function loadRecords() {
     try {
@@ -160,6 +165,7 @@ export default function Page() {
       if (!response.ok) throw new Error(payload.error || 'Failed to load records.');
       setRecords(payload.records || []);
       setNetwork(payload.network || null);
+      setSearchResults(null);
     } catch (error) {
       setRecords([]);
     }
@@ -375,28 +381,31 @@ export default function Page() {
     event.preventDefault();
     const query = searchQuery.trim();
     if (!query) {
-      setSearchStatus('Enter a transaction hash or record text.');
+      setSearchResults(null);
+      setSearchStatus('');
+      await loadRecords();
       return;
     }
 
     const isTxHash = /^0x([A-Fa-f0-9]{64})$/.test(query);
 
     try {
-      setSearchStatus(isTxHash ? 'Searching transaction…' : 'Searching archive…');
       const params = new URLSearchParams(isTxHash ? { txHash: query } : { q: query });
       const response = await fetch(`/api/records/search?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Search failed.');
 
       if (payload.record) {
+        setSearchResults(null);
         setActiveRecord(payload.record);
-        setSearchStatus('Record found.');
+        setSearchStatus('');
         return;
       }
 
-      setRecords(payload.records || []);
-      setSearchStatus(`${payload.records?.length || 0} records found.`);
+      setSearchResults(payload.records || []);
+      setSearchStatus('');
     } catch (error) {
+      setSearchResults([]);
       setSearchStatus(error.message || 'Search failed.');
     }
   }
@@ -468,15 +477,12 @@ export default function Page() {
               placeholder="Search tx hash or content"
             />
           </label>
-          <button type="submit" className="ghost-chip">
-            Search
+          <button type="submit" className="ghost-chip icon-chip" aria-label="Search">
+            <SearchIcon />
           </button>
         </form>
 
         <div className="nav nav-actions">
-          <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'about' ? '' : 'about')}>
-            About
-          </button>
           <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'how' ? '' : 'how')}>
             How it works
           </button>
@@ -497,11 +503,8 @@ export default function Page() {
 
       <main id="top" className="main-layout">
 
-        {activePanel === 'about' ? (
-          <Panel title="About Preglyph" body={ABOUT_COPY} onClose={() => setActivePanel('')} />
-        ) : null}
         {activePanel === 'how' ? (
-          <Panel
+          <CenterModal
             title="How it works"
             body="1. Connect with MetaMask. 2. Open Write. 3. Complete Presence verification if required. 4. Write a short record to Ethereum. 5. Search by tx hash or record text and revisit your archive from Profile."
             onClose={() => setActivePanel('')}
@@ -639,8 +642,8 @@ export default function Page() {
         ) : null}
 
         <section className="slab-grid" aria-label="Public record slabs">
-          {records.length ? (
-            records.map((record) => (
+          {displayedRecords.length ? (
+            displayedRecords.map((record) => (
               <button
                 key={`${record.txHash}-${record.id}`}
                 type="button"
@@ -651,11 +654,17 @@ export default function Page() {
                 <Inscription text={record.content} size={MATRIX_SIZE} variant="preview" fontVersion={fontVersion} />
               </button>
             ))
+          ) : searchQuery.trim() ? (
+            <div className="empty-state glass-panel">
+              <p className="eyebrow">No results</p>
+              <h3>No records found for that search.</h3>
+              <p className="floating-panel-copy">Try a full transaction hash or a different keyword.</p>
+            </div>
           ) : (
             <div className="empty-state glass-panel">
               <p className="eyebrow">Archive empty</p>
-              <h3>Deploy the contract, pass a wallet, and write the first record.</h3>
-              <p className="floating-panel-copy">Once the local test chain is running, every confirmed transaction will appear here as a slab preview.</p>
+              <h3>No records yet.</h3>
+              <p className="floating-panel-copy">Connect MetaMask, pass Presence, and write the first permanent record.</p>
             </div>
           )}
         </section>

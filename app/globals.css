@@ -614,6 +614,20 @@ time,
   cursor: pointer;
 }
 
+.icon-chip {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
 .hero-strip,
 .composer,
 .empty-state,
@@ -781,6 +795,7 @@ time,
   font: inherit;
 }
 
+.info-modal,
 .write-modal {
   width: min(720px, 100%);
 }
