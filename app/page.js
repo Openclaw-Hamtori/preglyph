@@ -279,7 +279,9 @@ export default function Page() {
     try {
       const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
       const nextAddress = accounts?.[0] || '';
-      await ensureWriterReady(walletAddress);
+      if (!nextAddress) {
+        throw new Error('MetaMask did not return a wallet address.');
+      }
       const provider = new BrowserProvider(metamaskProvider);
       await ensureWalletOnExpectedChain(provider, metamaskProvider);
       await ensureWriterReady(nextAddress);
