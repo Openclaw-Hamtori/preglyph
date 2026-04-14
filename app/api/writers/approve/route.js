@@ -1,5 +1,6 @@
+
 import { NextResponse } from 'next/server';
-import { createPresenceRequest } from '@/lib/presence';
+import { ensureWriterApproval } from '@/lib/chain';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,11 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Wallet address is required.' }, { status: 400 });
     }
 
-    const presenceRequest = await createPresenceRequest(address);
-    return NextResponse.json({ ok: true, request: presenceRequest });
+    const result = await ensureWriterApproval(address, true);
+    return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error.message || 'Failed to create a Presence request.' },
+      { ok: false, error: error.message || 'Failed to approve writer.' },
       { status: 500 },
     );
   }

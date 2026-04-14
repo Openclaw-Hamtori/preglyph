@@ -12,9 +12,6 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
-const ABOUT_COPY =
-  'Preglyph is a public archive where only Presence-passed humans can leave short permanent records on Ethereum.';
-
 function getMetaMaskProvider() {
   if (typeof window === 'undefined') return null;
   const injected = window.ethereum;
@@ -60,21 +57,6 @@ function openMetaMaskInstall() {
 function truncateAddress(address) {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function formatRecordedAt(timestampOrRelative) {
-  if (!timestampOrRelative) return '—';
-  if (typeof timestampOrRelative === 'number') {
-    return new Intl.DateTimeFormat('en-GB', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(new Date(timestampOrRelative * 1000));
-  }
-  return timestampOrRelative;
 }
 
 function relativeTimeFromUnix(timestamp) {
@@ -144,17 +126,13 @@ export default function Page() {
   const [walletAddress, setWalletAddress] = useState('');
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchStatus, setSearchStatus] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
-  const [claimState, setClaimState] = useState({ loading: false, message: '' });
-  const [presenceRequest, setPresenceRequest] = useState(null);
-  const [liveProofText, setLiveProofText] = useState('');
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
 
-  const isWriter = Boolean(profile?.presence?.passed && profile?.onchainApproved);
+  const isWriter = Boolean(profile?.onchainApproved);
   const profileRecords = profile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
 
@@ -185,6 +163,19 @@ export default function Page() {
     } catch (error) {
       setProfile(null);
     }
+  }
+
+  async function ensureWriterReady(address) {
+    if (!address) return false;
+
+    const response = await fetch('/api/writers/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Failed to enable writing.');
+    return true;
   }
 
   useEffect(() => {
@@ -289,8 +280,10 @@ export default function Page() {
     try {
       const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
       const nextAddress = accounts?.[0] || '';
+      await ensureWriterReady(walletAddress);
       const provider = new BrowserProvider(metamaskProvider);
       await ensureWalletOnExpectedChain(provider, metamaskProvider);
+      await ensureWriterReady(nextAddress);
       setWalletAddress(nextAddress);
       setActivePanel('profile');
       await loadProfile(nextAddress);
@@ -307,74 +300,6 @@ export default function Page() {
     }
   }
 
-  async function handlePresenceClaim() {
-    if (!walletAddress) {
-      setClaimState({ loading: false, message: 'Connect a wallet first.' });
-      return;
-    }
-
-    try {
-      setClaimState({ loading: true, message: 'Verifying Presence sandbox proof…' });
-      const response = await fetch('/api/presence/claim-sandbox', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: walletAddress }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Presence claim failed.');
-      await loadProfile(walletAddress);
-      setClaimState({ loading: false, message: 'Presence pass verified. Writing access is now unlocked.' });
-    } catch (error) {
-      setClaimState({ loading: false, message: error.message || 'Presence claim failed.' });
-    }
-  }
-
-  async function handleCreatePresenceRequest(addressOverride = '') {
-    const targetAddress = addressOverride || walletAddress;
-    if (!targetAddress) {
-      setClaimState({ loading: false, message: 'Connect a wallet first.' });
-      return;
-    }
-
-    try {
-      setClaimState({ loading: true, message: 'Creating Presence request…' });
-      const response = await fetch('/api/presence/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: targetAddress }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Failed to create Presence request.');
-      setPresenceRequest(payload.request);
-      setClaimState({ loading: false, message: 'Presence request created. Submit a real proof JSON to complete live verification.' });
-    } catch (error) {
-      setClaimState({ loading: false, message: error.message || 'Failed to create Presence request.' });
-    }
-  }
-
-  async function handleVerifyLivePresence() {
-    if (!walletAddress || !presenceRequest) {
-      setClaimState({ loading: false, message: 'Create a Presence request first.' });
-      return;
-    }
-
-    try {
-      const proof = JSON.parse(liveProofText);
-      setClaimState({ loading: true, message: 'Verifying Presence proof…' });
-      const response = await fetch('/api/presence/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: walletAddress, requestId: presenceRequest.requestId, proof }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Live Presence verification failed.');
-      await loadProfile(walletAddress);
-      setClaimState({ loading: false, message: 'Live Presence verification succeeded. Writing access is now unlocked.' });
-    } catch (error) {
-      setClaimState({ loading: false, message: error.message || 'Live Presence verification failed.' });
-    }
-  }
-
   async function handleOpenWriteFlow() {
     setComposeState({ loading: false, message: '' });
 
@@ -384,11 +309,9 @@ export default function Page() {
       if (!nextAddress) return;
     }
 
+    await ensureWriterReady(nextAddress);
+    await loadProfile(nextAddress);
     setActivePanel('write');
-
-    if (!profile?.presence?.passed) {
-      await handleCreatePresenceRequest(nextAddress);
-    }
   }
 
   async function handleSearch(event) {
@@ -396,7 +319,6 @@ export default function Page() {
     const query = searchQuery.trim();
     if (!query) {
       setSearchResults(null);
-      setSearchStatus('');
       await loadRecords();
       return;
     }
@@ -412,15 +334,12 @@ export default function Page() {
       if (payload.record) {
         setSearchResults(null);
         setActiveRecord(payload.record);
-        setSearchStatus('');
         return;
       }
 
       setSearchResults(payload.records || []);
-      setSearchStatus('');
     } catch (error) {
       setSearchResults([]);
-      setSearchStatus(error.message || 'Search failed.');
     }
   }
 
@@ -433,10 +352,6 @@ export default function Page() {
     }
     if (!walletAddress) {
       setComposeState({ loading: false, message: 'Connect a wallet first.' });
-      return;
-    }
-    if (!isWriter) {
-      setComposeState({ loading: false, message: 'Only Presence-passed wallets can write.' });
       return;
     }
     if (!CLIENT_CONTRACT_ADDRESS) {
@@ -452,6 +367,7 @@ export default function Page() {
 
     try {
       setComposeState({ loading: true, message: 'Preparing transaction…' });
+      await ensureWriterReady(walletAddress);
       const provider = new BrowserProvider(metamaskProvider);
       await ensureWalletOnExpectedChain(provider, metamaskProvider);
       const signer = await provider.getSigner();
@@ -464,7 +380,6 @@ export default function Page() {
       setSearchQuery(receipt.hash);
       setActivePanel('');
       setComposeState({ loading: false, message: `Record confirmed onchain: ${receipt.hash}` });
-      setSearchStatus('Latest record transaction is ready to inspect.');
     } catch (error) {
       setComposeState({ loading: false, message: error.reason || error.shortMessage || error.message || 'Write failed.' });
     }
@@ -520,7 +435,7 @@ export default function Page() {
         {activePanel === 'how' ? (
           <CenterModal
             title="How it works"
-            body="1. Connect with MetaMask. 2. Open Write. 3. Complete Presence verification if required. 4. Write a short record to Ethereum. 5. Search by tx hash or record text and revisit your archive from Profile."
+            body="1. Connect with MetaMask. 2. Open Write. 3. Sign the transaction. 4. Your record is written to Ethereum. 5. Search by tx hash or record text and revisit your archive from Profile."
             onClose={() => setActivePanel('')}
           />
         ) : null}
@@ -539,41 +454,9 @@ export default function Page() {
               <div className="glass-subpanel profile-card">
                 <p className="eyebrow">Wallet</p>
                 <strong>{walletAddress || 'Not connected'}</strong>
-                <span>{profile?.onchainApproved ? 'Onchain writer access granted.' : 'Write access locked.'}</span>
-              </div>
-              <div className="glass-subpanel profile-card">
-                <p className="eyebrow">Presence</p>
-                <strong>{profile?.presence?.passed ? 'Passed' : 'Not passed yet'}</strong>
-                <span>
-                  {profile?.presence?.writer?.verifiedAt
-                    ? `Verified ${formatRecordedAt(Math.floor(new Date(profile.presence.writer.verifiedAt).getTime() / 1000))}`
-                    : 'Use the sandbox verifier to unlock writing during testnet setup.'}
-                </span>
+                <span>{profile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
               </div>
             </div>
-            <div className="profile-actions wrap-actions">
-              <button type="button" className="connect-chip" disabled={claimState.loading || !walletAddress} onClick={handlePresenceClaim}>
-                {claimState.loading ? 'Verifying…' : 'Pass Presence sandbox'}
-              </button>
-              <button type="button" className="ghost-chip" disabled={claimState.loading || !walletAddress} onClick={handleCreatePresenceRequest}>
-                Create live Presence request
-              </button>
-            </div>
-            {presenceRequest ? (
-              <div className="live-presence-panel glass-subpanel">
-                <p className="eyebrow">Live Presence request</p>
-                <code>{presenceRequest.requestId}</code>
-                <span>nonce {presenceRequest.nonce}</span>
-                <textarea
-                  value={liveProofText}
-                  onChange={(event) => setLiveProofText(event.target.value)}
-                  placeholder="Paste a real Presence signed proof JSON here after completing the mobile flow."
-                />
-                <button type="button" className="connect-chip" onClick={handleVerifyLivePresence}>
-                  Verify live proof
-                </button>
-              </div>
-            ) : null}
             <div className="profile-records">
               <div className="section-row">
                 <h4>My writings</h4>
@@ -589,7 +472,7 @@ export default function Page() {
                   ))}
                 </div>
               ) : (
-                <p className="empty-copy">No records yet. Pass Presence, then write your first permanent record.</p>
+                <p className="empty-copy">No records yet. Connect and write your first permanent record.</p>
               )}
             </div>
           </div>
@@ -605,52 +488,23 @@ export default function Page() {
               <div className="floating-panel-head">
                 <div>
                   <p className="eyebrow">Write to Ethereum</p>
-                  <h3>{isWriter ? 'Write a permanent record' : 'Presence verification required'}</h3>
+                  <h3>Write a permanent record</h3>
                 </div>
-                <span className={`gate-pill ${isWriter ? 'unlocked' : 'locked'}`}>{isWriter ? 'Unlocked' : 'Locked'}</span>
+                <span className="gate-pill unlocked">Connected</span>
               </div>
-              {isWriter ? (
-                <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
-                  <textarea
-                    value={composeText}
-                    onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
-                    placeholder="Write a short permanent public record…"
-                  />
-                  <div className="compose-footer">
-                    <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
-                    <button type="submit" className="connect-chip" disabled={composeState.loading || !isWriter}>
-                      {composeState.loading ? 'Writing…' : 'Write onchain'}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="write-gate-stack">
-                  <p className="floating-panel-copy">Only Presence-passed humans can write. Opening Write can create a Presence request for your connected wallet.</p>
-                  <div className="profile-actions wrap-actions">
-                    <button type="button" className="connect-chip" disabled={claimState.loading || !walletAddress} onClick={handlePresenceClaim}>
-                      {claimState.loading ? 'Verifying…' : 'Pass Presence sandbox'}
-                    </button>
-                    <button type="button" className="ghost-chip" disabled={claimState.loading || !walletAddress} onClick={handleCreatePresenceRequest}>
-                      Refresh live Presence request
-                    </button>
-                  </div>
-                  {presenceRequest ? (
-                    <div className="live-presence-panel glass-subpanel">
-                      <p className="eyebrow">Live Presence request</p>
-                      <code>{presenceRequest.requestId}</code>
-                      <span>nonce {presenceRequest.nonce}</span>
-                      <textarea
-                        value={liveProofText}
-                        onChange={(event) => setLiveProofText(event.target.value)}
-                        placeholder="Paste a real Presence signed proof JSON here after completing the mobile flow."
-                      />
-                      <button type="button" className="connect-chip" onClick={handleVerifyLivePresence}>
-                        Verify live proof
-                      </button>
-                    </div>
-                  ) : null}
+              <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
+                <textarea
+                  value={composeText}
+                  onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
+                  placeholder="Write a short permanent public record…"
+                />
+                <div className="compose-footer">
+                  <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
+                  <button type="submit" className="connect-chip" disabled={composeState.loading}>
+                    {composeState.loading ? 'Writing…' : 'Write onchain'}
+                  </button>
                 </div>
-              )}
+              </form>
             </div>
           </div>
         ) : null}
@@ -678,7 +532,7 @@ export default function Page() {
             <div className="empty-state glass-panel">
               <p className="eyebrow">Archive empty</p>
               <h3>No records yet.</h3>
-              <p className="floating-panel-copy">Connect, pass Presence, and write the first permanent record.</p>
+              <p className="floating-panel-copy">Connect and write the first permanent record.</p>
             </div>
           )}
         </section>
