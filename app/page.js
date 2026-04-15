@@ -148,6 +148,49 @@ function extractMetaMaskErrorDetail(error) {
   };
 }
 
+function formatDebugValue(value) {
+  if (Array.isArray(value)) {
+    if (!value.length) return '[]';
+    return JSON.stringify(value);
+  }
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function readProviderSnapshot(provider) {
+  let isConnected = 'n/a';
+  if (typeof provider?.isConnected === 'function') {
+    try {
+      isConnected = provider.isConnected();
+    } catch (error) {
+      isConnected = `error:${error?.code || error?.message || 'unknown'}`;
+    }
+  }
+
+  return {
+    selectedAddress: provider?.selectedAddress || '',
+    chainId: provider?.chainId || '',
+    isConnected,
+    hasMetaMaskApi: typeof provider?._metamask?.isUnlocked === 'function',
+  };
+}
+
+function formatProviderSnapshot(snapshot = {}) {
+  return [
+    `selected=${snapshot.selectedAddress || '—'}`,
+    `chain=${snapshot.chainId || '—'}`,
+    `connected=${formatDebugValue(snapshot.isConnected)}`,
+    `metamaskApi=${snapshot.hasMetaMaskApi ? 'yes' : 'no'}`,
+  ].join(' · ');
+}
+
 function getPassiveRetryCount(reason = '') {
   const match = String(reason).match(/^retry:(\d+):/);
   return match ? Number(match[1]) : 0;
@@ -237,6 +280,7 @@ export default function Page() {
     lastErrorDetail: '',
     lastErrorAt: '',
     lastEvent: 'init',
+    probeTrace: [],
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -250,6 +294,14 @@ export default function Page() {
   const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
+
+  const appendProbeTrace = (label, detail = '') => {
+    const entry = detail ? `${label} · ${detail}` : label;
+    setWalletDebug((current) => ({
+      ...current,
+      probeTrace: [...current.probeTrace.slice(-6), entry],
+    }));
+  };
 
   useEffect(() => {
     walletAddressRef.current = walletAddress;
@@ -376,8 +428,17 @@ export default function Page() {
       }));
 
       try {
+        const startSnapshot = readProviderSnapshot(activeProvider);
+        if (cancelled || requestId !== probeRequestIdRef.current) return;
+        appendProbeTrace('probe:start', `${reason} · ${formatProviderSnapshot(startSnapshot)}`);
+        appendProbeTrace('eth_accounts:request', formatProviderSnapshot(startSnapshot));
         const accounts = await activeProvider.request({ method: 'eth_accounts' });
         if (cancelled || requestId !== probeRequestIdRef.current) return;
+        const successSnapshot = readProviderSnapshot(activeProvider);
+        appendProbeTrace(
+          'eth_accounts:success',
+          `accounts=${formatDebugValue(accounts)} · ${formatProviderSnapshot(successSnapshot)}`,
+        );
 
         const nextAddress = accounts?.[0] || '';
         setWalletDebug((current) => ({
@@ -409,6 +470,11 @@ export default function Page() {
         const passiveErrorDetail = extractMetaMaskErrorDetail(error);
         const retryCount = getPassiveRetryCount(reason);
         const retryable = isTransientMetaMaskStartupError(error) && retryCount < 2;
+        const errorSnapshot = readProviderSnapshot(activeProvider);
+        appendProbeTrace(
+          'eth_accounts:error',
+          `code=${passiveErrorDetail.code || error?.code || '—'} · ${passiveErrorDetail.message || error?.message || 'Unexpected error'} · ${formatProviderSnapshot(errorSnapshot)}`,
+        );
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
@@ -423,10 +489,12 @@ export default function Page() {
           lastEvent: retryable ? `probe:retry:${reason}` : `probe:error:${reason}`,
         }));
         if (retryable) {
+          appendProbeTrace('probe:retry', `next=${retryCount + 1} · reason=${reason}`);
           setConnectionStatus('checking');
           scheduleSync(`retry:${retryCount + 1}:${reason}`, 900);
           return;
         }
+        appendProbeTrace('probe:failed', `${reason} · ${formatProviderSnapshot(errorSnapshot)}`);
         setConnectionStatus((current) => (current === 'connected' ? 'connected' : 'disconnected'));
       } finally {
         if (!cancelled && requestId === probeRequestIdRef.current) {
@@ -456,6 +524,7 @@ export default function Page() {
           probeStatus: 'no_provider',
           lastPermissions: [],
           lastEvent: 'probe:no_provider',
+          probeTrace: [],
         }));
         setConnectionStatus('disconnected');
         setWalletProbeDone(true);
@@ -823,6 +892,7 @@ export default function Page() {
       lastEthAccounts: [],
       lastEvent: 'disconnect',
       probeStatus: 'disconnected',
+      probeTrace: [],
     }));
   }
 
@@ -985,6 +1055,18 @@ export default function Page() {
           <div className="debug-row"><span>last error code</span><strong>{walletDebug.lastErrorCode || '—'}</strong></div>
           <div className="debug-row debug-row-wide"><span>last error message</span><strong>{walletDebug.lastErrorMessage || '—'}</strong></div>
           <div className="debug-row debug-row-wide"><span>last error detail</span><strong>{walletDebug.lastErrorDetail || '—'}</strong></div>
+          <div className="debug-row debug-row-wide">
+            <span>probe trace</span>
+            <div className="debug-trace-list">
+              {walletDebug.probeTrace.length ? (
+                walletDebug.probeTrace.map((entry, index) => (
+                  <code key={`${index}-${entry}`} className="debug-trace-item">{entry}</code>
+                ))
+              ) : (
+                <strong>—</strong>
+              )}
+            </div>
+          </div>
           <div className="debug-row debug-row-wide"><span>eth_accounts</span><strong>{walletDebug.lastEthAccounts.length ? walletDebug.lastEthAccounts.join(', ') : '[]'}</strong></div>
           <div className="debug-row debug-row-wide"><span>permissions</span><strong>{walletDebug.lastPermissions.length ? JSON.stringify(walletDebug.lastPermissions) : '[]'}</strong></div>
           <div className="debug-row debug-row-wide"><span>last error at</span><strong>{walletDebug.lastErrorAt || '—'}</strong></div>

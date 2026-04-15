@@ -234,6 +234,24 @@ button {
   grid-column: 1 / -1;
 }
 
+.debug-trace-list {
+  display: grid;
+  gap: 6px;
+}
+
+.debug-trace-item {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(168, 193, 225, 0.1);
+  background: rgba(10, 16, 28, 0.66);
+  color: var(--text);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .brand-copy strong {
   font-size: 1rem;
   letter-spacing: -0.03em;
