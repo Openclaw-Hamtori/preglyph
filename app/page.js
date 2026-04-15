@@ -469,7 +469,9 @@ export default function Page() {
         if (cancelled || requestId !== probeRequestIdRef.current) return;
         const passiveErrorDetail = extractMetaMaskErrorDetail(error);
         const retryCount = getPassiveRetryCount(reason);
-        const retryable = isTransientMetaMaskStartupError(error) && retryCount < 2;
+        const baseReason = reason.replace(/^retry:\d+:/, '');
+        const allowRetry = baseReason === 'mount:remembered' || baseReason === 'chainChanged';
+        const retryable = isTransientMetaMaskStartupError(error) && allowRetry && retryCount < 1;
         const errorSnapshot = readProviderSnapshot(activeProvider);
         appendProbeTrace(
           'eth_accounts:error',
@@ -569,23 +571,16 @@ export default function Page() {
           lastEvent: 'event:chainChanged',
         }));
         loadRecords();
-        scheduleSync('chainChanged', 300);
-      };
-
-      const handlePageVisible = () => {
-        if (document.visibilityState && document.visibilityState !== 'visible') return;
-        scheduleSync('lifecycle:visible', 500);
-      };
-
-      const handlePageShow = () => {
-        scheduleSync('pageshow', 500);
+        if (walletAddressRef.current || readRememberedConnector() === 'metamask') {
+          scheduleSync('chainChanged', 800);
+        }
       };
 
       metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.on?.('chainChanged', handleChainChanged);
-      window.addEventListener('focus', handlePageVisible);
-      window.addEventListener('pageshow', handlePageShow);
-      document.addEventListener('visibilitychange', handlePageVisible);
+
+      const rememberedConnector = readRememberedConnector();
+      const shouldAttemptPassiveRestore = rememberedConnector === 'metamask';
 
       setWalletDebug((current) => ({
         ...current,
@@ -594,17 +589,19 @@ export default function Page() {
         selectedAddress: metamaskProvider?.selectedAddress || '',
         chainId: metamaskProvider?.chainId || '',
         lastPermissions: [],
-        lastEvent: 'probe:provider_ready',
+        lastEvent: shouldAttemptPassiveRestore ? 'probe:provider_ready' : 'probe:provider_ready:idle',
       }));
 
-      scheduleSync('mount', isProbablyMobile() ? 900 : 250);
+      if (shouldAttemptPassiveRestore) {
+        scheduleSync('mount:remembered', isProbablyMobile() ? 1800 : 1200);
+      } else {
+        setConnectionStatus('disconnected');
+        setWalletProbeDone(true);
+      }
 
       return () => {
         metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
         metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
-        window.removeEventListener('focus', handlePageVisible);
-        window.removeEventListener('pageshow', handlePageShow);
-        document.removeEventListener('visibilitychange', handlePageVisible);
       };
     };
 
