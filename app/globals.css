@@ -1072,6 +1072,16 @@ time,
     font-size: 0.88rem;
   }
 
+  .profile-menu-shell {
+    width: 100%;
+  }
+
+  .profile-menu {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+  }
+
   .profile-grid,
   .slab-grid {
     grid-template-columns: 1fr;
