@@ -60,16 +60,6 @@ function truncateAddress(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function getPermissionAccounts(permissions = []) {
-  const ethAccountsPermission = Array.isArray(permissions)
-    ? permissions.find((permission) => permission?.parentCapability === 'eth_accounts')
-    : null;
-  const restrictReturnedAccounts = ethAccountsPermission?.caveats?.find(
-    (caveat) => caveat?.type === 'restrictReturnedAccounts',
-  );
-  return Array.isArray(restrictReturnedAccounts?.value) ? restrictReturnedAccounts.value : [];
-}
-
 function isTransientMetaMaskStartupError(error) {
   return error?.code === -32603;
 }
@@ -677,87 +667,19 @@ export default function Page() {
       }));
 
       try {
-        let existingAccounts = [];
-        let permissions = [];
-        let hadTransientPreflightError = false;
-
-        try {
-          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 1, delayMs: 250 });
-        } catch (error) {
-          if (!isTransientMetaMaskStartupError(error)) {
-            throw error;
-          }
-          hadTransientPreflightError = true;
-          const preflightErrorDetail = extractMetaMaskErrorDetail(error);
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: metamaskProvider?.selectedAddress || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastPermissions: [],
-            lastErrorCode: preflightErrorDetail.code || String(error?.code || ''),
-            lastErrorMessage: preflightErrorDetail.message,
-            lastErrorDetail: preflightErrorDetail.detail,
-            lastErrorAt: new Date().toISOString(),
-            lastEvent: 'connect:preflight-eth_accounts-error',
-          }));
-        }
-
-        if (!hadTransientPreflightError && existingAccounts?.[0]) {
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: existingAccounts?.[0] || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastEthAccounts: existingAccounts || [],
-            lastPermissions: [],
-            probeStatus: 'connected',
-            lastEvent: 'connect:reuse-existing',
-          }));
-          return hydrateConnectedWallet(existingAccounts);
-        }
-
-        try {
-          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
-        } catch {
-          permissions = [];
-        }
-
-        const permissionAccounts = getPermissionAccounts(permissions);
-        if (!hadTransientPreflightError && permissionAccounts?.[0]) {
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: permissionAccounts?.[0] || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastEthAccounts: permissionAccounts || [],
-            lastPermissions: permissions,
-            probeStatus: 'connected',
-            lastEvent: 'connect:reuse-permissions',
-          }));
-          return hydrateConnectedWallet(permissionAccounts);
-        }
-
-        if (hadTransientPreflightError) {
-          await new Promise((resolve) => setTimeout(resolve, 400));
-        }
-
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
           providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
           selectedAddress: metamaskProvider?.selectedAddress || '',
           chainId: metamaskProvider?.chainId || '',
-          lastPermissions: permissions,
-          lastEvent: hadTransientPreflightError ? 'connect:requestAccounts-after-preflight-error' : 'connect:requestAccounts-start',
+          lastPermissions: [],
+          lastEvent: 'connect:requestAccounts-user-gesture',
         }));
 
         const accounts = await requestAccountsWithRetry(metamaskProvider, {
-          attempts: hadTransientPreflightError ? 3 : 2,
-          delayMs: hadTransientPreflightError ? 900 : 700,
+          attempts: 3,
+          delayMs: 900,
         });
         setWalletDebug((current) => ({
           ...current,
@@ -766,7 +688,7 @@ export default function Page() {
           selectedAddress: accounts?.[0] || '',
           chainId: metamaskProvider?.chainId || '',
           lastEthAccounts: accounts || [],
-          lastPermissions: permissions,
+          lastPermissions: [],
           probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
           lastEvent: 'connect:requestAccounts-success',
         }));
