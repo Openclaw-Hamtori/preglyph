@@ -75,6 +75,16 @@ function truncateAddress(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function getPermissionAccounts(permissions = []) {
+  const ethAccountsPermission = Array.isArray(permissions)
+    ? permissions.find((permission) => permission?.parentCapability === 'eth_accounts')
+    : null;
+  const restrictReturnedAccounts = ethAccountsPermission?.caveats?.find(
+    (caveat) => caveat?.type === 'restrictReturnedAccounts',
+  );
+  return Array.isArray(restrictReturnedAccounts?.value) ? restrictReturnedAccounts.value : [];
+}
+
 function isTransientMetaMaskStartupError(error) {
   return error?.code === -32603;
 }
@@ -171,6 +181,7 @@ export default function Page() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [profile, setProfile] = useState(null);
   const connectPromiseRef = useRef(null);
+  const connectInFlightRef = useRef(false);
   const probeRetryTimeoutRef = useRef(null);
   const probeInFlightRef = useRef(false);
   const queuedProbeReasonRef = useRef('');
@@ -293,6 +304,9 @@ export default function Page() {
 
     const scheduleSync = (reason, delayMs = 0) => {
       if (cancelled) return;
+      if (connectInFlightRef.current) {
+        return;
+      }
       if (lifecycleRetryTimeout) clearTimeout(lifecycleRetryTimeout);
       lifecycleRetryTimeout = setTimeout(() => {
         lifecycleRetryTimeout = null;
@@ -302,6 +316,9 @@ export default function Page() {
 
     const syncWalletState = async (reason = 'mount') => {
       if (!activeProvider) return;
+      if (connectInFlightRef.current) {
+        return;
+      }
       if (probeInFlightRef.current) {
         queuedProbeReasonRef.current = reason;
         return;
@@ -553,6 +570,7 @@ export default function Page() {
 
     const connectPromise = (async () => {
       setIsConnecting(true);
+      connectInFlightRef.current = true;
       setConnectionStatus('connecting');
       setWalletDebug((current) => ({
         ...current,
@@ -566,6 +584,80 @@ export default function Page() {
       }));
 
       try {
+        let existingAccounts = [];
+        let permissions = [];
+        let hadTransientPreflightError = false;
+
+        try {
+          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 1, delayMs: 250 });
+        } catch (error) {
+          if (!isTransientMetaMaskStartupError(error)) {
+            throw error;
+          }
+          hadTransientPreflightError = true;
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: metamaskProvider?.selectedAddress || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastErrorCode: String(error?.code || ''),
+            lastErrorMessage: error?.message || 'Unexpected error',
+            lastErrorAt: new Date().toISOString(),
+            lastEvent: 'connect:preflight-eth_accounts-error',
+          }));
+        }
+
+        if (!hadTransientPreflightError && existingAccounts?.[0]) {
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: existingAccounts?.[0] || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastEthAccounts: existingAccounts || [],
+            probeStatus: 'connected',
+            lastEvent: 'connect:reuse-existing',
+          }));
+          return hydrateConnectedWallet(existingAccounts);
+        }
+
+        try {
+          permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
+        } catch {
+          permissions = [];
+        }
+
+        const permissionAccounts = getPermissionAccounts(permissions);
+        if (!hadTransientPreflightError && permissionAccounts?.[0]) {
+          setWalletDebug((current) => ({
+            ...current,
+            providerDetected: true,
+            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+            selectedAddress: permissionAccounts?.[0] || '',
+            chainId: metamaskProvider?.chainId || '',
+            lastEthAccounts: permissionAccounts || [],
+            lastPermissions: permissions,
+            probeStatus: 'connected',
+            lastEvent: 'connect:reuse-permissions',
+          }));
+          return hydrateConnectedWallet(permissionAccounts);
+        }
+
+        if (hadTransientPreflightError) {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+
+        setWalletDebug((current) => ({
+          ...current,
+          providerDetected: true,
+          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+          selectedAddress: metamaskProvider?.selectedAddress || '',
+          chainId: metamaskProvider?.chainId || '',
+          lastPermissions: permissions,
+          lastEvent: hadTransientPreflightError ? 'connect:requestAccounts-after-preflight-error' : 'connect:requestAccounts-start',
+        }));
+
         const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
         setWalletDebug((current) => ({
           ...current,
@@ -574,16 +666,39 @@ export default function Page() {
           selectedAddress: accounts?.[0] || '',
           chainId: metamaskProvider?.chainId || '',
           lastEthAccounts: accounts || [],
+          lastPermissions: permissions,
           probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
           lastEvent: 'connect:requestAccounts-success',
         }));
         return await hydrateConnectedWallet(accounts);
       } catch (error) {
+        if (error?.code !== 4001 && error?.code !== -32002 && isTransientMetaMaskStartupError(error)) {
+          try {
+            const fallbackAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 2, delayMs: 250 });
+            if (fallbackAccounts?.[0]) {
+              setWalletDebug((current) => ({
+                ...current,
+                selectedAddress: fallbackAccounts?.[0] || '',
+                lastEthAccounts: fallbackAccounts || [],
+                probeStatus: 'connected',
+                lastEvent: 'connect:fallback-eth_accounts',
+              }));
+              return await hydrateConnectedWallet(fallbackAccounts);
+            }
+          } catch {}
+        }
+
         setConnectionStatus(walletAddress ? 'connected' : 'disconnected');
         if (typeof window !== 'undefined') {
+          let permissions = [];
+          try {
+            permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
+          } catch {}
+
           console.error('MetaMask connect failed', {
             code: error?.code,
             message: error?.message,
+            permissions,
             error,
           });
           setWalletDebug((current) => ({
@@ -592,6 +707,7 @@ export default function Page() {
             providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
             selectedAddress: metamaskProvider?.selectedAddress || '',
             chainId: metamaskProvider?.chainId || '',
+            lastPermissions: permissions,
             lastErrorCode: String(error?.code || ''),
             lastErrorMessage: error?.message || 'Unexpected error',
             lastErrorAt: new Date().toISOString(),
@@ -609,6 +725,7 @@ export default function Page() {
         }
         return '';
       } finally {
+        connectInFlightRef.current = false;
         connectPromiseRef.current = null;
         setIsConnecting(false);
       }
