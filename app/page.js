@@ -818,14 +818,6 @@ export default function Page() {
 
         <div className="nav nav-actions">
           {walletAddress ? (
-            <button type="button" className="nav-link" onClick={() => setActivePanel(activePanel === 'my-preglyph' ? '' : 'my-preglyph')}>
-              My Preglyph
-            </button>
-          ) : null}
-          <button type="button" className="nav-link" onClick={handleOpenWriteFlow}>
-            Write
-          </button>
-          {walletAddress ? (
             <div className="profile-menu-shell">
               <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'menu' ? '' : 'menu')}>
                 Profile
@@ -847,7 +839,7 @@ export default function Page() {
                   </div>
                   <button type="button" className="profile-menu-item danger" onClick={handleDisconnectWallet}>
                     <span>Disconnect</span>
-                    <strong>MetaMask</strong>
+                    <strong>Disconnect</strong>
                   </button>
                 </div>
               ) : null}
