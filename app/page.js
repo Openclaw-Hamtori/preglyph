@@ -148,6 +148,11 @@ function extractMetaMaskErrorDetail(error) {
   };
 }
 
+function getPassiveRetryCount(reason = '') {
+  const match = String(reason).match(/^retry:(\d+):/);
+  return match ? Number(match[1]) : 0;
+}
+
 async function requestAccountsWithRetry(provider, { attempts = 3, delayMs = 700 } = {}) {
   let lastError;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -215,11 +220,10 @@ export default function Page() {
   const [profile, setProfile] = useState(null);
   const connectPromiseRef = useRef(null);
   const connectInFlightRef = useRef(false);
-  const probeRetryTimeoutRef = useRef(null);
   const probeInFlightRef = useRef(false);
-  const queuedProbeReasonRef = useRef('');
-  const probeAttemptRef = useRef(0);
   const probeRequestIdRef = useRef(0);
+  const queuedProbeReasonRef = useRef('');
+  const walletAddressRef = useRef('');
   const [walletDebug, setWalletDebug] = useState({
     providerDetected: false,
     providerRdns: '',
@@ -241,9 +245,20 @@ export default function Page() {
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
 
-  const isWriter = Boolean(profile?.onchainApproved);
-  const profileRecords = profile?.records || [];
+  const connectedWalletAddress = connectionStatus === 'connected' ? walletAddress : '';
+  const activeProfile = connectionStatus === 'connected' ? profile : null;
+  const isWriter = Boolean(activeProfile?.onchainApproved);
+  const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
+
+  useEffect(() => {
+    walletAddressRef.current = walletAddress;
+  }, [walletAddress]);
+
+  useEffect(() => {
+    if (connectionStatus === 'connected') return;
+    setActivePanel((current) => (current === 'menu' || current === 'my-preglyph' || current === 'write' ? '' : current));
+  }, [connectionStatus]);
 
   async function loadRecords() {
     try {
@@ -323,13 +338,8 @@ export default function Page() {
     let cancelled = false;
     let activeProvider = null;
     let lifecycleRetryTimeout = null;
-    const rememberedConnector = readRememberedConnector();
 
-    const clearProbeRetry = () => {
-      if (probeRetryTimeoutRef.current) {
-        clearTimeout(probeRetryTimeoutRef.current);
-        probeRetryTimeoutRef.current = null;
-      }
+    const clearScheduledSync = () => {
       if (lifecycleRetryTimeout) {
         clearTimeout(lifecycleRetryTimeout);
         lifecycleRetryTimeout = null;
@@ -337,11 +347,8 @@ export default function Page() {
     };
 
     const scheduleSync = (reason, delayMs = 0) => {
-      if (cancelled) return;
-      if (connectInFlightRef.current) {
-        return;
-      }
-      if (lifecycleRetryTimeout) clearTimeout(lifecycleRetryTimeout);
+      if (cancelled || connectInFlightRef.current) return;
+      clearScheduledSync();
       lifecycleRetryTimeout = setTimeout(() => {
         lifecycleRetryTimeout = null;
         if (!cancelled) syncWalletState(reason);
@@ -349,17 +356,13 @@ export default function Page() {
     };
 
     const syncWalletState = async (reason = 'mount') => {
-      if (!activeProvider) return;
-      if (connectInFlightRef.current) {
-        return;
-      }
+      if (!activeProvider || connectInFlightRef.current) return;
       if (probeInFlightRef.current) {
         queuedProbeReasonRef.current = reason;
         return;
       }
 
       probeInFlightRef.current = true;
-      clearProbeRetry();
       const requestId = ++probeRequestIdRef.current;
       setConnectionStatus((current) => (current === 'connected' ? current : 'checking'));
       setWalletDebug((current) => ({
@@ -373,12 +376,10 @@ export default function Page() {
       }));
 
       try {
-        const accounts = await requestWithRetry(activeProvider, 'eth_accounts', { attempts: 1, delayMs: 400 });
+        const accounts = await activeProvider.request({ method: 'eth_accounts' });
         if (cancelled || requestId !== probeRequestIdRef.current) return;
 
         const nextAddress = accounts?.[0] || '';
-        probeAttemptRef.current = 0;
-        writeRememberedConnector(nextAddress ? 'metamask' : '');
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
@@ -387,6 +388,7 @@ export default function Page() {
           chainId: activeProvider?.chainId || '',
           probeStatus: nextAddress ? 'connected' : 'disconnected',
           lastEthAccounts: accounts || [],
+          lastPermissions: [],
           lastErrorCode: '',
           lastErrorMessage: '',
           lastErrorDetail: '',
@@ -395,52 +397,45 @@ export default function Page() {
         setWalletAddress(nextAddress);
         setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
         setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
-        await loadProfile(nextAddress);
-        if (!cancelled && requestId === probeRequestIdRef.current) {
-          setWalletProbeDone(true);
+        if (!nextAddress) {
+          writeRememberedConnector('');
+          setProfile(null);
+        } else {
+          writeRememberedConnector('metamask');
         }
+        await loadProfile(nextAddress);
       } catch (error) {
         if (cancelled || requestId !== probeRequestIdRef.current) return;
-
-        const nextAttempt = probeAttemptRef.current + 1;
-        probeAttemptRef.current = nextAttempt;
-        const maxAttempts = rememberedConnector === 'metamask' ? 6 : 4;
-        const retryable = isTransientMetaMaskStartupError(error) && nextAttempt < maxAttempts;
-
+        const passiveErrorDetail = extractMetaMaskErrorDetail(error);
+        const retryCount = getPassiveRetryCount(reason);
+        const retryable = isTransientMetaMaskStartupError(error) && retryCount < 2;
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
           providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: activeProvider?.selectedAddress || '',
+          selectedAddress: activeProvider?.selectedAddress || current.selectedAddress || '',
           chainId: activeProvider?.chainId || '',
           probeStatus: retryable ? 'retrying' : 'error',
-          lastErrorCode: String(error?.code || ''),
-          lastErrorMessage: error?.message || 'Unknown probe error',
+          lastErrorCode: passiveErrorDetail.code || String(error?.code || ''),
+          lastErrorMessage: passiveErrorDetail.message,
+          lastErrorDetail: passiveErrorDetail.detail,
           lastErrorAt: new Date().toISOString(),
-          lastEvent: retryable ? `probe:retry:${reason}:${nextAttempt}` : `probe:error:${reason}`,
-          lastEthAccounts: [],
+          lastEvent: retryable ? `probe:retry:${reason}` : `probe:error:${reason}`,
         }));
-
         if (retryable) {
           setConnectionStatus('checking');
-          probeRetryTimeoutRef.current = setTimeout(() => {
-            if (!cancelled) syncWalletState(`retry-${nextAttempt}`);
-          }, 800 + nextAttempt * 700);
+          scheduleSync(`retry:${retryCount + 1}:${reason}`, 900);
           return;
         }
-
-        setWalletAddress('');
-        setProfile(null);
-        setConnectionStatus('disconnected');
-        writeRememberedConnector('');
-        setWalletProbeDone(true);
+        setConnectionStatus((current) => (current === 'connected' ? 'connected' : 'disconnected'));
       } finally {
-        if (requestId === probeRequestIdRef.current) {
+        if (!cancelled && requestId === probeRequestIdRef.current) {
+          setWalletProbeDone(true);
           probeInFlightRef.current = false;
           const queuedReason = queuedProbeReasonRef.current;
           queuedProbeReasonRef.current = '';
-          if (!cancelled && queuedReason) {
-            syncWalletState(queuedReason);
+          if (queuedReason) {
+            scheduleSync(queuedReason, 150);
           }
         }
       }
@@ -459,6 +454,7 @@ export default function Page() {
           selectedAddress: '',
           chainId: '',
           probeStatus: 'no_provider',
+          lastPermissions: [],
           lastEvent: 'probe:no_provider',
         }));
         setConnectionStatus('disconnected');
@@ -467,31 +463,31 @@ export default function Page() {
       }
 
       activeProvider = metamaskProvider;
-      setWalletDebug((current) => ({
-        ...current,
-        providerDetected: true,
-        providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-        selectedAddress: metamaskProvider?.selectedAddress || '',
-        chainId: metamaskProvider?.chainId || '',
-        lastEvent: 'probe:provider_ready',
-      }));
 
       const handleAccountsChanged = (accounts) => {
-        clearProbeRetry();
-        probeAttemptRef.current = 0;
         const nextAddress = accounts?.[0] || '';
         setWalletDebug((current) => ({
           ...current,
+          providerDetected: true,
+          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
           selectedAddress: nextAddress,
+          chainId: metamaskProvider?.chainId || '',
           lastEthAccounts: accounts || [],
+          lastPermissions: [],
           probeStatus: nextAddress ? 'connected' : 'disconnected',
           lastErrorCode: '',
           lastErrorMessage: '',
+          lastErrorDetail: '',
           lastEvent: 'event:accountsChanged',
         }));
         setWalletAddress(nextAddress);
         setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
-        writeRememberedConnector(nextAddress ? 'metamask' : '');
+        if (nextAddress) {
+          writeRememberedConnector('metamask');
+        } else {
+          writeRememberedConnector('');
+          setProfile(null);
+        }
         setWalletProbeDone(true);
         setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
         loadProfile(nextAddress);
@@ -512,19 +508,33 @@ export default function Page() {
         scheduleSync('lifecycle:visible', 500);
       };
 
+      const handlePageShow = () => {
+        scheduleSync('pageshow', 500);
+      };
+
       metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.on?.('chainChanged', handleChainChanged);
       window.addEventListener('focus', handlePageVisible);
-      window.addEventListener('pageshow', handlePageVisible);
+      window.addEventListener('pageshow', handlePageShow);
       document.addEventListener('visibilitychange', handlePageVisible);
 
-      scheduleSync('mount', rememberedConnector === 'metamask' || isProbablyMobile() ? 1200 : 300);
+      setWalletDebug((current) => ({
+        ...current,
+        providerDetected: true,
+        providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
+        selectedAddress: metamaskProvider?.selectedAddress || '',
+        chainId: metamaskProvider?.chainId || '',
+        lastPermissions: [],
+        lastEvent: 'probe:provider_ready',
+      }));
+
+      scheduleSync('mount', isProbablyMobile() ? 900 : 250);
 
       return () => {
         metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
         metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
         window.removeEventListener('focus', handlePageVisible);
-        window.removeEventListener('pageshow', handlePageVisible);
+        window.removeEventListener('pageshow', handlePageShow);
         document.removeEventListener('visibilitychange', handlePageVisible);
       };
     };
@@ -538,7 +548,7 @@ export default function Page() {
 
     return () => {
       cancelled = true;
-      clearProbeRetry();
+      clearScheduledSync();
       probeInFlightRef.current = false;
       queuedProbeReasonRef.current = '';
       if (cleanupListeners) cleanupListeners();
@@ -648,6 +658,7 @@ export default function Page() {
             providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
             selectedAddress: metamaskProvider?.selectedAddress || '',
             chainId: metamaskProvider?.chainId || '',
+            lastPermissions: [],
             lastErrorCode: preflightErrorDetail.code || String(error?.code || ''),
             lastErrorMessage: preflightErrorDetail.message,
             lastErrorDetail: preflightErrorDetail.detail,
@@ -664,6 +675,7 @@ export default function Page() {
             selectedAddress: existingAccounts?.[0] || '',
             chainId: metamaskProvider?.chainId || '',
             lastEthAccounts: existingAccounts || [],
+            lastPermissions: [],
             probeStatus: 'connected',
             lastEvent: 'connect:reuse-existing',
           }));
@@ -740,19 +752,13 @@ export default function Page() {
           } catch {}
         }
 
-        setConnectionStatus(walletAddress ? 'connected' : 'disconnected');
+        setConnectionStatus(walletAddressRef.current ? 'connected' : 'disconnected');
         if (typeof window !== 'undefined') {
-          let permissions = [];
-          try {
-            permissions = await requestWithRetry(metamaskProvider, 'wallet_getPermissions', { attempts: 1, delayMs: 200 });
-          } catch {}
-
           console.error('MetaMask connect failed', {
             code: error?.code,
             message: error?.message,
             detail: connectErrorDetail,
             rawData: error?.data,
-            permissions,
             error,
           });
           setWalletDebug((current) => ({
@@ -761,7 +767,7 @@ export default function Page() {
             providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
             selectedAddress: metamaskProvider?.selectedAddress || '',
             chainId: metamaskProvider?.chainId || '',
-            lastPermissions: permissions,
+            lastPermissions: [],
             lastErrorCode: connectErrorDetail.code || String(error?.code || ''),
             lastErrorMessage: connectErrorDetail.message,
             lastErrorDetail: connectErrorDetail.detail,
@@ -918,7 +924,7 @@ export default function Page() {
         </form>
 
         <div className="nav nav-actions">
-          {walletAddress ? (
+          {connectionStatus === 'connected' && walletAddress ? (
             <div className="profile-menu-shell">
               <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'menu' ? '' : 'menu')}>
                 Profile
@@ -986,12 +992,12 @@ export default function Page() {
       </section>
 
       <main id="top" className="main-layout">
-        {activePanel === 'my-preglyph' ? (
+        {activePanel === 'my-preglyph' && connectionStatus === 'connected' ? (
           <div className="floating-panel glass-panel profile-panel">
             <div className="floating-panel-head">
               <div>
                 <p className="eyebrow">My Preglyph</p>
-                <h3>{walletAddress ? truncateAddress(walletAddress) : 'Connect wallet'}</h3>
+                <h3>{connectedWalletAddress ? truncateAddress(connectedWalletAddress) : 'Connect wallet'}</h3>
               </div>
               <button type="button" className="ghost-chip" onClick={() => setActivePanel('')}>
                 Close
@@ -1000,8 +1006,8 @@ export default function Page() {
             <div className="profile-grid">
               <div className="glass-subpanel profile-card">
                 <p className="eyebrow">Wallet</p>
-                <strong>{walletAddress || 'Not connected'}</strong>
-                <span>{profile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
+                <strong>{connectedWalletAddress || 'Not connected'}</strong>
+                <span>{activeProfile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
                 <div className="profile-actions wrap-actions">
                   <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow}>
                     Write
@@ -1033,7 +1039,7 @@ export default function Page() {
           </div>
         ) : null}
 
-        {activePanel === 'write' ? (
+        {activePanel === 'write' && connectionStatus === 'connected' ? (
           <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
             <div className="detail-dim" onClick={() => setActivePanel('')} />
             <div className="detail-panel glass-panel write-modal">
