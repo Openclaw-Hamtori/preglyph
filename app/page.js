@@ -131,6 +131,39 @@ async function waitForMetaMaskProvider(timeoutMs = 1200) {
   });
 }
 
+function extractMetaMaskErrorDetail(error) {
+  const originalError = error?.data?.originalError;
+  const nestedMessage = originalError?.message || error?.data?.message || error?.message || 'Unexpected error';
+  const nestedCode = originalError?.code ?? error?.data?.code ?? error?.code ?? '';
+  let detail = '';
+  try {
+    detail = originalError ? JSON.stringify(originalError) : error?.data ? JSON.stringify(error.data) : '';
+  } catch {
+    detail = originalError?.message || error?.data?.message || '';
+  }
+  return {
+    code: String(nestedCode || ''),
+    message: nestedMessage,
+    detail,
+  };
+}
+
+async function requestAccountsWithRetry(provider, { attempts = 3, delayMs = 700 } = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await provider.request({ method: 'eth_requestAccounts' });
+    } catch (error) {
+      lastError = error;
+      if (!isTransientMetaMaskStartupError(error) || attempt === attempts) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+  throw lastError;
+}
+
 function relativeTimeFromUnix(timestamp) {
   if (!timestamp) return 'pending';
   const diffSeconds = Math.max(1, Math.floor(Date.now() / 1000 - timestamp));
@@ -197,6 +230,7 @@ export default function Page() {
     lastPermissions: [],
     lastErrorCode: '',
     lastErrorMessage: '',
+    lastErrorDetail: '',
     lastErrorAt: '',
     lastEvent: 'init',
   });
@@ -355,6 +389,7 @@ export default function Page() {
           lastEthAccounts: accounts || [],
           lastErrorCode: '',
           lastErrorMessage: '',
+          lastErrorDetail: '',
           lastEvent: `probe:success:${reason}`,
         }));
         setWalletAddress(nextAddress);
@@ -564,6 +599,16 @@ export default function Page() {
       writeRememberedConnector('metamask');
       setActivePanel('');
       setWalletProbeDone(true);
+      setWalletDebug((current) => ({
+        ...current,
+        selectedAddress: nextAddress,
+        lastEthAccounts: accounts || [],
+        probeStatus: 'connected',
+        lastErrorCode: '',
+        lastErrorMessage: '',
+        lastErrorDetail: '',
+        lastEvent: 'connect:hydrated',
+      }));
       await loadProfile(nextAddress);
       return nextAddress;
     };
@@ -581,6 +626,7 @@ export default function Page() {
         lastEvent: 'connect:requestAccounts-start',
         lastErrorCode: '',
         lastErrorMessage: '',
+        lastErrorDetail: '',
       }));
 
       try {
@@ -595,14 +641,16 @@ export default function Page() {
             throw error;
           }
           hadTransientPreflightError = true;
+          const preflightErrorDetail = extractMetaMaskErrorDetail(error);
           setWalletDebug((current) => ({
             ...current,
             providerDetected: true,
             providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
             selectedAddress: metamaskProvider?.selectedAddress || '',
             chainId: metamaskProvider?.chainId || '',
-            lastErrorCode: String(error?.code || ''),
-            lastErrorMessage: error?.message || 'Unexpected error',
+            lastErrorCode: preflightErrorDetail.code || String(error?.code || ''),
+            lastErrorMessage: preflightErrorDetail.message,
+            lastErrorDetail: preflightErrorDetail.detail,
             lastErrorAt: new Date().toISOString(),
             lastEvent: 'connect:preflight-eth_accounts-error',
           }));
@@ -658,7 +706,10 @@ export default function Page() {
           lastEvent: hadTransientPreflightError ? 'connect:requestAccounts-after-preflight-error' : 'connect:requestAccounts-start',
         }));
 
-        const accounts = await metamaskProvider.request({ method: 'eth_requestAccounts' });
+        const accounts = await requestAccountsWithRetry(metamaskProvider, {
+          attempts: hadTransientPreflightError ? 3 : 2,
+          delayMs: hadTransientPreflightError ? 900 : 700,
+        });
         setWalletDebug((current) => ({
           ...current,
           providerDetected: true,
@@ -672,6 +723,7 @@ export default function Page() {
         }));
         return await hydrateConnectedWallet(accounts);
       } catch (error) {
+        const connectErrorDetail = extractMetaMaskErrorDetail(error);
         if (error?.code !== 4001 && error?.code !== -32002 && isTransientMetaMaskStartupError(error)) {
           try {
             const fallbackAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 2, delayMs: 250 });
@@ -698,6 +750,8 @@ export default function Page() {
           console.error('MetaMask connect failed', {
             code: error?.code,
             message: error?.message,
+            detail: connectErrorDetail,
+            rawData: error?.data,
             permissions,
             error,
           });
@@ -708,8 +762,9 @@ export default function Page() {
             selectedAddress: metamaskProvider?.selectedAddress || '',
             chainId: metamaskProvider?.chainId || '',
             lastPermissions: permissions,
-            lastErrorCode: String(error?.code || ''),
-            lastErrorMessage: error?.message || 'Unexpected error',
+            lastErrorCode: connectErrorDetail.code || String(error?.code || ''),
+            lastErrorMessage: connectErrorDetail.message,
+            lastErrorDetail: connectErrorDetail.detail,
             lastErrorAt: new Date().toISOString(),
             lastEvent: 'connect:error',
             probeStatus: 'error',
@@ -719,7 +774,7 @@ export default function Page() {
           } else if (error?.code === -32002) {
             window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
           } else {
-            const detail = error?.message || 'Wallet connection failed.';
+            const detail = connectErrorDetail.message || error?.message || 'Wallet connection failed.';
             window.alert(`Connect failed: ${detail}`);
           }
         }
@@ -923,6 +978,7 @@ export default function Page() {
           <div className="debug-row"><span>last event</span><strong>{walletDebug.lastEvent}</strong></div>
           <div className="debug-row"><span>last error code</span><strong>{walletDebug.lastErrorCode || '—'}</strong></div>
           <div className="debug-row debug-row-wide"><span>last error message</span><strong>{walletDebug.lastErrorMessage || '—'}</strong></div>
+          <div className="debug-row debug-row-wide"><span>last error detail</span><strong>{walletDebug.lastErrorDetail || '—'}</strong></div>
           <div className="debug-row debug-row-wide"><span>eth_accounts</span><strong>{walletDebug.lastEthAccounts.length ? walletDebug.lastEthAccounts.join(', ') : '[]'}</strong></div>
           <div className="debug-row debug-row-wide"><span>permissions</span><strong>{walletDebug.lastPermissions.length ? JSON.stringify(walletDebug.lastPermissions) : '[]'}</strong></div>
           <div className="debug-row debug-row-wide"><span>last error at</span><strong>{walletDebug.lastErrorAt || '—'}</strong></div>
