@@ -12,21 +12,6 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
-const LAST_CONNECTOR_KEY = 'preglyph:last-connector';
-
-function readRememberedConnector() {
-  if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(LAST_CONNECTOR_KEY) || '';
-}
-
-function writeRememberedConnector(connector) {
-  if (typeof window === 'undefined') return;
-  if (connector) {
-    window.localStorage.setItem(LAST_CONNECTOR_KEY, connector);
-    return;
-  }
-  window.localStorage.removeItem(LAST_CONNECTOR_KEY);
-}
 
 function getMetaMaskProvider() {
   if (typeof window === 'undefined') return null;
@@ -459,10 +444,7 @@ export default function Page() {
         setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
         setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
         if (!nextAddress) {
-          writeRememberedConnector('');
           setProfile(null);
-        } else {
-          writeRememberedConnector('metamask');
         }
         await loadProfile(nextAddress);
       } catch (error) {
@@ -470,7 +452,7 @@ export default function Page() {
         const passiveErrorDetail = extractMetaMaskErrorDetail(error);
         const retryCount = getPassiveRetryCount(reason);
         const baseReason = reason.replace(/^retry:\d+:/, '');
-        const allowRetry = baseReason === 'mount:remembered' || baseReason === 'chainChanged';
+        const allowRetry = baseReason === 'chainChanged' && Boolean(walletAddressRef.current);
         const retryable = isTransientMetaMaskStartupError(error) && allowRetry && retryCount < 1;
         const errorSnapshot = readProviderSnapshot(activeProvider);
         appendProbeTrace(
@@ -553,10 +535,7 @@ export default function Page() {
         }));
         setWalletAddress(nextAddress);
         setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
-        if (nextAddress) {
-          writeRememberedConnector('metamask');
-        } else {
-          writeRememberedConnector('');
+        if (!nextAddress) {
           setProfile(null);
         }
         setWalletProbeDone(true);
@@ -571,16 +550,13 @@ export default function Page() {
           lastEvent: 'event:chainChanged',
         }));
         loadRecords();
-        if (walletAddressRef.current || readRememberedConnector() === 'metamask') {
+        if (walletAddressRef.current) {
           scheduleSync('chainChanged', 800);
         }
       };
 
       metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
       metamaskProvider.on?.('chainChanged', handleChainChanged);
-
-      const rememberedConnector = readRememberedConnector();
-      const shouldAttemptPassiveRestore = rememberedConnector === 'metamask';
 
       setWalletDebug((current) => ({
         ...current,
@@ -589,15 +565,11 @@ export default function Page() {
         selectedAddress: metamaskProvider?.selectedAddress || '',
         chainId: metamaskProvider?.chainId || '',
         lastPermissions: [],
-        lastEvent: shouldAttemptPassiveRestore ? 'probe:provider_ready' : 'probe:provider_ready:idle',
+        lastEvent: 'probe:provider_ready:idle',
       }));
 
-      if (shouldAttemptPassiveRestore) {
-        scheduleSync('mount:remembered', isProbablyMobile() ? 1800 : 1200);
-      } else {
-        setConnectionStatus('disconnected');
-        setWalletProbeDone(true);
-      }
+      setConnectionStatus('disconnected');
+      setWalletProbeDone(true);
 
       return () => {
         metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
@@ -672,7 +644,6 @@ export default function Page() {
       }
       setWalletAddress(nextAddress);
       setConnectionStatus('connected');
-      writeRememberedConnector('metamask');
       setActivePanel('');
       setWalletProbeDone(true);
       setWalletDebug((current) => ({
@@ -880,7 +851,6 @@ export default function Page() {
     setWalletAddress('');
     setProfile(null);
     setConnectionStatus('disconnected');
-    writeRememberedConnector('');
     setActivePanel('');
     setWalletProbeDone(true);
     setWalletDebug((current) => ({
