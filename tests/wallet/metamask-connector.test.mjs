@@ -8,6 +8,7 @@ import {
   getMetaMaskUnlockState,
   getPassiveRetryCount,
   readRememberedSession,
+  resolveMetaMaskProvider,
   rememberConnectedWallet,
   clearRememberedWallet,
   shouldRestoreRememberedSession,
@@ -162,4 +163,40 @@ test('subscribeMetaMaskProvider wires and unwires the provider connect event', (
   unsubscribe();
 
   assert.equal(listeners.has('connect'), false);
+});
+
+test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider when child providers are partial proxies', () => {
+  const nestedMetaMaskProvider = {
+    isMetaMask: true,
+    _metamask: {
+      isUnlocked: async () => true,
+    },
+  };
+  const injected = {
+    isMetaMask: true,
+    isConnected: () => true,
+    providerInfo: { rdns: 'io.metamask' },
+    _metamask: {
+      isUnlocked: async () => true,
+    },
+    providers: [nestedMetaMaskProvider],
+  };
+
+  assert.equal(resolveMetaMaskProvider(injected), injected);
+});
+
+test('resolveMetaMaskProvider still finds MetaMask inside providers when top-level injected object is not MetaMask', () => {
+  const nestedMetaMaskProvider = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    isConnected: () => true,
+  };
+  const injected = {
+    providers: [
+      { isCoinbaseWallet: true },
+      nestedMetaMaskProvider,
+    ],
+  };
+
+  assert.equal(resolveMetaMaskProvider(injected), nestedMetaMaskProvider);
 });
