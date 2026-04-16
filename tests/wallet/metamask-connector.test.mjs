@@ -13,6 +13,7 @@ import {
   shouldRestoreRememberedSession,
   restoreMetaMaskSession,
   stripPassiveRetryPrefixes,
+  subscribeMetaMaskProvider,
 } from '../../lib/wallet/metamask-connector.mjs';
 
 test('remembered session helpers persist and clear the MetaMask connector state', () => {
@@ -138,4 +139,27 @@ test('getMetaMaskUnlockState reads the private MetaMask unlock signal when avail
   };
 
   assert.equal(await getMetaMaskUnlockState(provider), false);
+});
+
+test('subscribeMetaMaskProvider wires and unwires the provider connect event', () => {
+  const listeners = new Map();
+  const provider = {
+    on(eventName, handler) {
+      listeners.set(eventName, handler);
+    },
+    removeListener(eventName, handler) {
+      if (listeners.get(eventName) === handler) {
+        listeners.delete(eventName);
+      }
+    },
+  };
+
+  const onConnect = () => {};
+  const unsubscribe = subscribeMetaMaskProvider(provider, { onConnect });
+
+  assert.equal(listeners.get('connect'), onConnect);
+
+  unsubscribe();
+
+  assert.equal(listeners.has('connect'), false);
 });
