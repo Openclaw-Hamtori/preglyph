@@ -5,11 +5,13 @@ import {
   METAMASK_CONNECTOR_ID,
   connectMetaMask,
   createMemoryStorage,
+  getPassiveRetryCount,
   readRememberedSession,
   rememberConnectedWallet,
   clearRememberedWallet,
   shouldRestoreRememberedSession,
   restoreMetaMaskSession,
+  stripPassiveRetryPrefixes,
 } from '../../lib/wallet/metamask-connector.mjs';
 
 test('remembered session helpers persist and clear the MetaMask connector state', () => {
@@ -27,6 +29,12 @@ test('remembered session helpers persist and clear the MetaMask connector state'
   clearRememberedWallet(storage);
   assert.deepEqual(readRememberedSession(storage), { connector: '', address: '' });
   assert.equal(shouldRestoreRememberedSession(readRememberedSession(storage)), false);
+});
+
+test('stripPassiveRetryPrefixes normalizes nested retry reasons', () => {
+  assert.equal(getPassiveRetryCount('retry:2:retry:1:restore:remembered'), 2);
+  assert.equal(stripPassiveRetryPrefixes('retry:2:retry:1:restore:remembered'), 'restore:remembered');
+  assert.equal(stripPassiveRetryPrefixes('restore:remembered'), 'restore:remembered');
 });
 
 test('restoreMetaMaskSession uses eth_accounts and returns the authorized address', async () => {
