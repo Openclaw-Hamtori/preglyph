@@ -10,6 +10,7 @@ import {
   getPassiveRetryCount,
   readRememberedSession,
   resolveMetaMaskProvider,
+  resolveReconnectProvider,
   rememberConnectedWallet,
   clearRememberedWallet,
   shouldRestoreRememberedSession,
@@ -199,6 +200,21 @@ test('shouldDeferNoProviderDisconnect keeps an already-restored wallet session f
     }),
     false,
   );
+});
+
+test('resolveReconnectProvider reuses the cached MetaMask provider when fresh detection is temporarily unavailable', () => {
+  const cachedProvider = {
+    request: async () => [],
+    on: () => {},
+    removeListener: () => {},
+    isMetaMask: true,
+  };
+
+  assert.equal(
+    resolveReconnectProvider({ detectedProvider: null, cachedProvider }),
+    cachedProvider,
+  );
+  assert.equal(resolveReconnectProvider({ detectedProvider: null, cachedProvider: null }), null);
 });
 
 test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider when child providers are partial proxies', () => {
