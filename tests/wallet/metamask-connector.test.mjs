@@ -50,6 +50,34 @@ test('restoreMetaMaskSession uses eth_accounts and returns the authorized addres
   });
 });
 
+test('restoreMetaMaskSession retries a transient eth_accounts startup failure', async () => {
+  const calls = [];
+  let attempts = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        attempts += 1;
+        if (attempts === 1) {
+          const error = new Error('Unexpected error');
+          error.code = -32603;
+          throw error;
+        }
+        return ['0x124'];
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  const result = await restoreMetaMaskSession(provider, { attempts: 2, delayMs: 0 });
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_accounts']);
+  assert.deepEqual(result, {
+    accounts: ['0x124'],
+    address: '0x124',
+  });
+});
+
 test('connectMetaMask reuses an already-authorized account before prompting', async () => {
   const calls = [];
   const provider = {
@@ -121,4 +149,103 @@ test('connectMetaMask still prompts once after a transient MetaMask preflight er
   assert.equal(result.reusedExisting, false);
   assert.equal(result.hadTransientPreflightError, true);
   assert.deepEqual(result.accounts, ['0xccc']);
+});
+
+test('connectMetaMask retries a transient eth_requestAccounts startup failure once', async () => {
+  const calls = [];
+  let interactiveAttempts = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        return [];
+      }
+      if (method === 'eth_requestAccounts') {
+        interactiveAttempts += 1;
+        if (interactiveAttempts === 1) {
+          const error = new Error('Unexpected error');
+          error.code = -32603;
+          throw error;
+        }
+        return ['0xddd'];
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  let retryWaits = 0;
+  const result = await connectMetaMask(provider, {
+    waitAfterPreflightError: async () => {
+      retryWaits += 1;
+    },
+  });
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_requestAccounts']);
+  assert.equal(retryWaits, 1);
+  assert.equal(result.reusedExisting, false);
+  assert.equal(result.hadTransientPreflightError, false);
+  assert.deepEqual(result.accounts, ['0xddd']);
+});
+
+test('connectMetaMask recovers via delayed eth_accounts after a transient eth_requestAccounts failure', async () => {
+  const calls = [];
+  let fallbackChecks = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        fallbackChecks += 1;
+        return fallbackChecks === 1 ? [] : ['0xeee'];
+      }
+      if (method === 'eth_requestAccounts') {
+        const error = new Error('Unexpected error');
+        error.code = -32603;
+        throw error;
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  let retryWaits = 0;
+  const result = await connectMetaMask(provider, {
+    waitAfterPreflightError: async () => {
+      retryWaits += 1;
+    },
+  });
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts']);
+  assert.equal(retryWaits, 1);
+  assert.equal(result.reusedExisting, true);
+  assert.deepEqual(result.accounts, ['0xeee']);
+});
+
+test('connectMetaMask clamps interactiveRetryAttempts to a single bounded retry', async () => {
+  const calls = [];
+  let interactiveAttempts = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        return [];
+      }
+      if (method === 'eth_requestAccounts') {
+        interactiveAttempts += 1;
+        if (interactiveAttempts === 1) {
+          const error = new Error('Unexpected error');
+          error.code = -32603;
+          throw error;
+        }
+        return ['0xfff'];
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  const result = await connectMetaMask(provider, {
+    interactiveRetryAttempts: 99,
+    waitAfterPreflightError: async () => {},
+  });
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_requestAccounts']);
+  assert.deepEqual(result.accounts, ['0xfff']);
 });
