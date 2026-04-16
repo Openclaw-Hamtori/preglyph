@@ -190,7 +190,12 @@ test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider w
     providers: [nestedMetaMaskProvider],
   };
 
-  assert.equal(resolveMetaMaskProvider(injected), injected);
+  const resolved = resolveMetaMaskProvider(injected);
+  assert.equal(resolved.providerInfo?.rdns, 'io.metamask');
+  assert.equal(typeof resolved.request, 'function');
+  assert.equal(typeof resolved.on, 'function');
+  assert.equal(typeof resolved.removeListener, 'function');
+  assert.equal(resolved.providers?.[0], nestedMetaMaskProvider);
 });
 
 test('resolveMetaMaskProvider ignores a top-level MetaMask wrapper without EIP-1193 events and falls back to a usable nested provider', () => {
@@ -212,7 +217,60 @@ test('resolveMetaMaskProvider ignores a top-level MetaMask wrapper without EIP-1
     providers: [nestedMetaMaskProvider],
   };
 
-  assert.equal(resolveMetaMaskProvider(injected), nestedMetaMaskProvider);
+  const resolved = resolveMetaMaskProvider(injected);
+  assert.equal(resolved.providerInfo?.rdns, 'io.metamask');
+  assert.equal(typeof resolved.request, 'function');
+  assert.equal(typeof resolved.on, 'function');
+  assert.equal(typeof resolved.removeListener, 'function');
+});
+
+test('resolveMetaMaskProvider upgrades MetaMask-style addListener/off providers into usable EIP-1193 providers', () => {
+  const calls = [];
+  let selectedAddress = '0x111';
+  const nestedMetaMaskProvider = {
+    isMetaMask: true,
+    request: async () => [],
+    addListener(eventName, handler) {
+      calls.push(['addListener', eventName, handler]);
+    },
+    off(eventName, handler) {
+      calls.push(['off', eventName, handler]);
+    },
+    providerInfo: { rdns: 'io.metamask' },
+    _metamask: {
+      isUnlocked: async () => true,
+    },
+  };
+  Object.defineProperty(nestedMetaMaskProvider, 'selectedAddress', {
+    configurable: true,
+    get() {
+      return selectedAddress;
+    },
+  });
+  const injected = {
+    providers: [nestedMetaMaskProvider],
+  };
+
+  const resolved = resolveMetaMaskProvider(injected);
+  const handler = () => {};
+
+  assert.notEqual(resolved, nestedMetaMaskProvider);
+  assert.equal(typeof resolved.on, 'function');
+  assert.equal(typeof resolved.removeListener, 'function');
+  assert.equal(nestedMetaMaskProvider.on, undefined);
+  assert.equal(nestedMetaMaskProvider.removeListener, undefined);
+  assert.equal(resolved.selectedAddress, '0x111');
+
+  selectedAddress = '0x222';
+  assert.equal(resolved.selectedAddress, '0x222');
+
+  resolved.on('accountsChanged', handler);
+  resolved.removeListener('accountsChanged', handler);
+
+  assert.deepEqual(calls, [
+    ['addListener', 'accountsChanged', handler],
+    ['off', 'accountsChanged', handler],
+  ]);
 });
 
 test('resolveMetaMaskProvider still finds MetaMask inside providers when top-level injected object is not MetaMask', () => {
@@ -230,5 +288,10 @@ test('resolveMetaMaskProvider still finds MetaMask inside providers when top-lev
     ],
   };
 
-  assert.equal(resolveMetaMaskProvider(injected), nestedMetaMaskProvider);
+  const resolved = resolveMetaMaskProvider(injected);
+  assert.equal(resolved.providerInfo?.rdns, 'io.metamask');
+  assert.equal(typeof resolved.request, 'function');
+  assert.equal(typeof resolved.on, 'function');
+  assert.equal(typeof resolved.removeListener, 'function');
+  assert.equal(resolved.isConnected(), true);
 });
