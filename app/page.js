@@ -5,6 +5,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
+import {
+  ensureWalletOnExpectedChain,
+  extractMetaMaskErrorDetail,
+  openMetaMaskInstall,
+  resolveMetaMaskProvider,
+} from '@/lib/wallet/metamask-connector.mjs';
+import { useMetaMaskSession } from '@/lib/wallet/useMetaMaskSession';
 
 const CLIENT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_ID || 31337);
 const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS || '';
@@ -12,189 +19,10 @@ const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
 const MAX_RECORD_LENGTH = 280;
-const LAST_CONNECTOR_KEY = 'preglyph:last-connector';
-const LAST_CONNECTED_ADDRESS_KEY = 'preglyph:last-connected-address';
-
-function readRememberedSession() {
-  if (typeof window === 'undefined') return { connector: '', address: '' };
-  return {
-    connector: window.localStorage.getItem(LAST_CONNECTOR_KEY) || '',
-    address: window.localStorage.getItem(LAST_CONNECTED_ADDRESS_KEY) || '',
-  };
-}
-
-function rememberConnectedWallet(address) {
-  if (typeof window === 'undefined' || !address) return;
-  window.localStorage.setItem(LAST_CONNECTOR_KEY, 'metamask');
-  window.localStorage.setItem(LAST_CONNECTED_ADDRESS_KEY, address);
-}
-
-function clearRememberedWallet() {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(LAST_CONNECTOR_KEY);
-  window.localStorage.removeItem(LAST_CONNECTED_ADDRESS_KEY);
-}
-
-function getMetaMaskProvider() {
-  if (typeof window === 'undefined') return null;
-  const injected = window.ethereum;
-  if (!injected) return null;
-
-  const providers = Array.isArray(injected.providers) && injected.providers.length ? injected.providers : [injected];
-
-  const byRdns = providers.find((provider) => provider?.providerInfo?.rdns === 'io.metamask');
-  if (byRdns) return byRdns;
-
-  return (
-    providers.find(
-      (provider) =>
-        provider?.isMetaMask &&
-        !provider?.isAvalanche &&
-        !provider?.isBraveWallet &&
-        !provider?.isCoinbaseWallet &&
-        !provider?.isOkxWallet &&
-        !provider?.isOKExWallet &&
-        !provider?.isOKXWallet &&
-        !provider?.isRabby &&
-        !provider?.isTokenPocket &&
-        !provider?.isTrust,
-    ) || null
-  );
-}
-
-function isProbablyMobile() {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-}
-
-function openMetaMaskInstall() {
-  if (typeof window === 'undefined') return;
-  const dappUrl = 'preglyph.com';
-  if (isProbablyMobile()) {
-    window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
-    return;
-  }
-  window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
-}
 
 function truncateAddress(address) {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-function isTransientMetaMaskStartupError(error) {
-  return error?.code === -32603;
-}
-
-async function requestWithRetry(provider, method, { attempts = 3, delayMs = 250 } = {}) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      return await provider.request({ method });
-    } catch (error) {
-      lastError = error;
-      if (!isTransientMetaMaskStartupError(error) || attempt === attempts) {
-        throw error;
-      }
-      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
-    }
-  }
-
-  throw lastError;
-}
-
-async function waitForMetaMaskProvider(timeoutMs = 1200) {
-  const existingProvider = getMetaMaskProvider();
-  if (existingProvider) return existingProvider;
-  if (typeof window === 'undefined') return null;
-
-  return await new Promise((resolve) => {
-    let settled = false;
-    let timeoutId = null;
-
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener('ethereum#initialized', handleInitialized);
-      if (timeoutId) clearTimeout(timeoutId);
-      resolve(getMetaMaskProvider());
-    };
-
-    const handleInitialized = () => finish();
-
-    window.addEventListener('ethereum#initialized', handleInitialized, { once: true });
-    timeoutId = setTimeout(finish, timeoutMs);
-  });
-}
-
-function extractMetaMaskErrorDetail(error) {
-  const originalError = error?.data?.originalError;
-  const nestedMessage = originalError?.message || error?.data?.message || error?.message || 'Unexpected error';
-  const nestedCode = originalError?.code ?? error?.data?.code ?? error?.code ?? '';
-  let detail = '';
-  try {
-    detail = originalError ? JSON.stringify(originalError) : error?.data ? JSON.stringify(error.data) : '';
-  } catch {
-    detail = originalError?.message || error?.data?.message || '';
-  }
-  return {
-    code: String(nestedCode || ''),
-    message: nestedMessage,
-    detail,
-  };
-}
-
-function formatDebugValue(value) {
-  if (Array.isArray(value)) {
-    if (!value.length) return '[]';
-    return JSON.stringify(value);
-  }
-  if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'object') {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  }
-  return String(value);
-}
-
-function readProviderSnapshot(provider) {
-  let isConnected = 'n/a';
-  if (typeof provider?.isConnected === 'function') {
-    try {
-      isConnected = provider.isConnected();
-    } catch (error) {
-      isConnected = `error:${error?.code || error?.message || 'unknown'}`;
-    }
-  }
-
-  return {
-    selectedAddress: provider?.selectedAddress || '',
-    chainId: provider?.chainId || '',
-    isConnected,
-    hasMetaMaskApi: typeof provider?._metamask?.isUnlocked === 'function',
-  };
-}
-
-function formatProviderSnapshot(snapshot = {}) {
-  return [
-    `selected=${snapshot.selectedAddress || '—'}`,
-    `chain=${snapshot.chainId || '—'}`,
-    `connected=${formatDebugValue(snapshot.isConnected)}`,
-    `metamaskApi=${snapshot.hasMetaMaskApi ? 'yes' : 'no'}`,
-  ].join(' · ');
-}
-
-function getPassiveRetryCount(reason = '') {
-  const match = String(reason).match(/^retry:(\d+):/);
-  return match ? Number(match[1]) : 0;
-}
-
-async function requestAccounts(provider) {
-  return await provider.request({ method: 'eth_requestAccounts' });
 }
 
 function relativeTimeFromUnix(timestamp) {
@@ -241,64 +69,59 @@ export default function Page() {
   const [records, setRecords] = useState([]);
   const [network, setNetwork] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
-  const [walletAddress, setWalletAddress] = useState('');
-  const [walletProbeDone, setWalletProbeDone] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('checking');
-  const [isConnecting, setIsConnecting] = useState(false);
   const [profile, setProfile] = useState(null);
-  const connectPromiseRef = useRef(null);
-  const connectInFlightRef = useRef(false);
-  const probeInFlightRef = useRef(false);
-  const probeRequestIdRef = useRef(0);
-  const queuedProbeReasonRef = useRef('');
-  const walletAddressRef = useRef('');
-  const lifecycleRetryTimeoutRef = useRef(null);
-  const manualDisconnectRef = useRef(false);
-  const [walletDebug, setWalletDebug] = useState({
-    providerDetected: false,
-    providerRdns: '',
-    selectedAddress: '',
-    chainId: '',
-    probeStatus: 'idle',
-    lastEthAccounts: [],
-    lastPermissions: [],
-    lastErrorCode: '',
-    lastErrorMessage: '',
-    lastErrorDetail: '',
-    lastErrorAt: '',
-    lastEvent: 'init',
-    probeTrace: [],
-  });
+  const {
+    walletAddress,
+    connectedWalletAddress,
+    walletProbeDone,
+    connectionStatus,
+    isConnecting,
+    walletDebug,
+    chainChangeCount,
+    connect: connectWalletSession,
+    disconnect: disconnectWalletSession,
+  } = useMetaMaskSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
+  const profileRequestIdRef = useRef(0);
+  const connectedWalletAddressRef = useRef('');
 
-  const connectedWalletAddress = connectionStatus === 'connected' && walletProbeDone ? walletAddress : '';
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
   const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
 
-  const appendProbeTrace = (label, detail = '') => {
-    const entry = detail ? `${label} · ${detail}` : label;
-    setWalletDebug((current) => ({
-      ...current,
-      probeTrace: [...current.probeTrace.slice(-6), entry],
-    }));
-  };
-
-  useEffect(() => {
-    walletAddressRef.current = walletAddress;
-  }, [walletAddress]);
-
   useEffect(() => {
     if (connectionStatus === 'connected') return;
     setActivePanel((current) => (current === 'menu' || current === 'my-preglyph' || current === 'write' ? '' : current));
   }, [connectionStatus]);
+
+  useEffect(() => {
+    connectedWalletAddressRef.current = connectedWalletAddress;
+  }, [connectedWalletAddress]);
+
+  useEffect(() => {
+    profileRequestIdRef.current += 1;
+    setProfile(null);
+    if (!connectedWalletAddress) {
+      return;
+    }
+
+    loadProfile(connectedWalletAddress);
+  }, [connectedWalletAddress]);
+
+  useEffect(() => {
+    if (!chainChangeCount) return;
+    loadRecords();
+    if (connectedWalletAddress) {
+      loadProfile(connectedWalletAddress);
+    }
+  }, [chainChangeCount, connectedWalletAddress]);
 
   async function loadRecords() {
     try {
@@ -315,16 +138,21 @@ export default function Page() {
 
   async function loadProfile(address) {
     if (!address) {
+      profileRequestIdRef.current += 1;
       setProfile(null);
       return;
     }
 
+    const requestId = ++profileRequestIdRef.current;
+
     try {
       const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
       const payload = await response.json();
+      if (requestId !== profileRequestIdRef.current) return;
       if (!response.ok) throw new Error(payload.error || 'Failed to load profile.');
       setProfile(payload.profile);
     } catch (error) {
+      if (requestId !== profileRequestIdRef.current) return;
       setProfile(null);
     }
   }
@@ -339,12 +167,21 @@ export default function Page() {
     if (!response.ok) throw new Error(payload.error || 'Failed to load writer status.');
 
     const profileData = payload.profile || null;
-    setProfile(profileData);
-
     if (!profileData?.onchainApproved) {
       throw new Error('Presence verification is required before writing.');
     }
 
+    return profileData;
+  }
+
+  function isCurrentConnectedAddress(address) {
+    return Boolean(address) && connectedWalletAddressRef.current?.toLowerCase() === address.toLowerCase();
+  }
+
+  function applyProfileForCurrentAddress(address, profileData) {
+    if (!isCurrentConnectedAddress(address)) return false;
+    profileRequestIdRef.current += 1;
+    setProfile(profileData);
     return true;
   }
 
@@ -380,475 +217,49 @@ export default function Page() {
     setSearchResults(null);
   }, [searchQuery]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let activeProvider = null;
-
-    const clearScheduledSync = () => {
-      if (lifecycleRetryTimeoutRef.current) {
-        clearTimeout(lifecycleRetryTimeoutRef.current);
-        lifecycleRetryTimeoutRef.current = null;
-      }
-    };
-
-    const scheduleSync = (reason, delayMs = 0) => {
-      if (cancelled || connectInFlightRef.current || manualDisconnectRef.current) return;
-      clearScheduledSync();
-      lifecycleRetryTimeoutRef.current = setTimeout(() => {
-        lifecycleRetryTimeoutRef.current = null;
-        if (!cancelled && !manualDisconnectRef.current) syncWalletState(reason);
-      }, delayMs);
-    };
-
-    const syncWalletState = async (reason = 'mount') => {
-      if (!activeProvider || connectInFlightRef.current || manualDisconnectRef.current) return;
-      if (probeInFlightRef.current) {
-        queuedProbeReasonRef.current = reason;
-        return;
-      }
-
-      probeInFlightRef.current = true;
-      const requestId = ++probeRequestIdRef.current;
-      setConnectionStatus((current) => (current === 'connected' ? current : 'checking'));
-      setWalletDebug((current) => ({
-        ...current,
-        providerDetected: true,
-        providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
-        selectedAddress: activeProvider?.selectedAddress || '',
-        chainId: activeProvider?.chainId || '',
-        probeStatus: 'probing',
-        lastEvent: `probe:start:${reason}`,
-      }));
-
-      try {
-        const startSnapshot = readProviderSnapshot(activeProvider);
-        if (cancelled || requestId !== probeRequestIdRef.current) return;
-        appendProbeTrace('probe:start', `${reason} · ${formatProviderSnapshot(startSnapshot)}`);
-        appendProbeTrace('eth_accounts:request', formatProviderSnapshot(startSnapshot));
-        const accounts = await activeProvider.request({ method: 'eth_accounts' });
-        if (cancelled || requestId !== probeRequestIdRef.current || manualDisconnectRef.current) return;
-        const successSnapshot = readProviderSnapshot(activeProvider);
-        appendProbeTrace(
-          'eth_accounts:success',
-          `accounts=${formatDebugValue(accounts)} · ${formatProviderSnapshot(successSnapshot)}`,
-        );
-
-        const nextAddress = accounts?.[0] || '';
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: true,
-          providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: activeProvider?.selectedAddress || nextAddress,
-          chainId: activeProvider?.chainId || '',
-          probeStatus: nextAddress ? 'connected' : 'disconnected',
-          lastEthAccounts: accounts || [],
-          lastPermissions: [],
-          lastErrorCode: '',
-          lastErrorMessage: '',
-          lastErrorDetail: '',
-          lastEvent: `probe:success:${reason}`,
-        }));
-        setWalletAddress(nextAddress);
-        setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
-        setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
-        if (!nextAddress) {
-          clearRememberedWallet();
-          setProfile(null);
-        } else {
-          rememberConnectedWallet(nextAddress);
-        }
-        await loadProfile(nextAddress);
-      } catch (error) {
-        if (cancelled || requestId !== probeRequestIdRef.current || manualDisconnectRef.current) return;
-        const passiveErrorDetail = extractMetaMaskErrorDetail(error);
-        const retryCount = getPassiveRetryCount(reason);
-        const baseReason = reason.replace(/^retry:\d+:/, '');
-        const allowRetry = baseReason === 'chainChanged' || baseReason === 'restore:remembered';
-        const retryable = isTransientMetaMaskStartupError(error) && allowRetry && retryCount < 2;
-        const errorSnapshot = readProviderSnapshot(activeProvider);
-        appendProbeTrace(
-          'eth_accounts:error',
-          `code=${passiveErrorDetail.code || error?.code || '—'} · ${passiveErrorDetail.message || error?.message || 'Unexpected error'} · ${formatProviderSnapshot(errorSnapshot)}`,
-        );
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: true,
-          providerRdns: activeProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: activeProvider?.selectedAddress || current.selectedAddress || '',
-          chainId: activeProvider?.chainId || '',
-          probeStatus: retryable ? 'retrying' : 'error',
-          lastErrorCode: passiveErrorDetail.code || String(error?.code || ''),
-          lastErrorMessage: passiveErrorDetail.message,
-          lastErrorDetail: passiveErrorDetail.detail,
-          lastErrorAt: new Date().toISOString(),
-          lastEvent: retryable ? `probe:retry:${reason}` : `probe:error:${reason}`,
-        }));
-        if (retryable) {
-          appendProbeTrace('probe:retry', `next=${retryCount + 1} · reason=${reason}`);
-          setConnectionStatus('checking');
-          scheduleSync(`retry:${retryCount + 1}:${reason}`, 900);
-          return;
-        }
-        appendProbeTrace('probe:failed', `${reason} · ${formatProviderSnapshot(errorSnapshot)}`);
-        if (baseReason === 'restore:remembered') {
-          clearRememberedWallet();
-          setWalletAddress('');
-          setProfile(null);
-          setConnectionStatus('disconnected');
-          return;
-        }
-        setConnectionStatus((current) => (current === 'connected' ? 'connected' : 'disconnected'));
-      } finally {
-        if (!cancelled && requestId === probeRequestIdRef.current) {
-          setWalletProbeDone(true);
-          probeInFlightRef.current = false;
-          const queuedReason = queuedProbeReasonRef.current;
-          queuedProbeReasonRef.current = '';
-          if (queuedReason) {
-            scheduleSync(queuedReason, 150);
-          }
-        }
-      }
-    };
-
-    const setupWallet = async () => {
-      setWalletProbeDone(false);
-      setConnectionStatus('checking');
-      const metamaskProvider = await waitForMetaMaskProvider(2500);
-      if (cancelled) return;
-      if (!metamaskProvider) {
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: false,
-          providerRdns: '',
-          selectedAddress: '',
-          chainId: '',
-          probeStatus: 'no_provider',
-          lastPermissions: [],
-          lastEvent: 'probe:no_provider',
-          probeTrace: [],
-        }));
-        setConnectionStatus('disconnected');
-        setWalletProbeDone(true);
-        return;
-      }
-
-      activeProvider = metamaskProvider;
-
-      const handleAccountsChanged = (accounts) => {
-        const nextAddress = accounts?.[0] || '';
-        if (manualDisconnectRef.current && nextAddress) {
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: nextAddress,
-            chainId: metamaskProvider?.chainId || '',
-            lastEvent: 'event:accountsChanged:ignored',
-          }));
-          return;
-        }
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: true,
-          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: nextAddress,
-          chainId: metamaskProvider?.chainId || '',
-          lastEthAccounts: accounts || [],
-          lastPermissions: [],
-          probeStatus: nextAddress ? 'connected' : 'disconnected',
-          lastErrorCode: '',
-          lastErrorMessage: '',
-          lastErrorDetail: '',
-          lastEvent: 'event:accountsChanged',
-        }));
-        setWalletAddress(nextAddress);
-        setConnectionStatus(nextAddress ? 'connected' : 'disconnected');
-        if (!nextAddress) {
-          clearRememberedWallet();
-          setProfile(null);
-        } else {
-          rememberConnectedWallet(nextAddress);
-        }
-        setWalletProbeDone(true);
-        setActivePanel((current) => (!nextAddress && (current === 'my-preglyph' || current === 'menu') ? '' : current));
-        loadProfile(nextAddress);
-      };
-
-      const handleChainChanged = () => {
-        setWalletDebug((current) => ({
-          ...current,
-          chainId: metamaskProvider?.chainId || '',
-          lastEvent: 'event:chainChanged',
-        }));
-        loadRecords();
-        if (walletAddressRef.current) {
-          scheduleSync('chainChanged', 800);
-        }
-      };
-
-      metamaskProvider.on?.('accountsChanged', handleAccountsChanged);
-      metamaskProvider.on?.('chainChanged', handleChainChanged);
-
-      const rememberedSession = readRememberedSession();
-      const shouldRestoreRemembered = rememberedSession.connector === 'metamask' && Boolean(rememberedSession.address);
-
-      setWalletDebug((current) => ({
-        ...current,
-        providerDetected: true,
-        providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-        selectedAddress: metamaskProvider?.selectedAddress || rememberedSession.address || '',
-        chainId: metamaskProvider?.chainId || '',
-        lastPermissions: [],
-        lastEvent: shouldRestoreRemembered ? 'probe:provider_ready:restore' : 'probe:provider_ready:idle',
-      }));
-
-      if (shouldRestoreRemembered) {
-        setWalletAddress(rememberedSession.address);
-        setConnectionStatus('checking');
-        setWalletProbeDone(false);
-        scheduleSync('restore:remembered', isProbablyMobile() ? 1800 : 900);
-      } else {
-        setConnectionStatus('disconnected');
-        setWalletProbeDone(true);
-      }
-
-      return () => {
-        metamaskProvider.removeListener?.('accountsChanged', handleAccountsChanged);
-        metamaskProvider.removeListener?.('chainChanged', handleChainChanged);
-      };
-    };
-
-    let cleanupListeners = null;
-    setupWallet().then((cleanup) => {
-      if (typeof cleanup === 'function') {
-        cleanupListeners = cleanup;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      clearScheduledSync();
-      probeInFlightRef.current = false;
-      queuedProbeReasonRef.current = '';
-      if (cleanupListeners) cleanupListeners();
-    };
-  }, []);
-
-  async function ensureWalletOnExpectedChain(provider, metamaskProvider) {
-    const networkInfo = await provider.getNetwork();
-    if (Number(networkInfo.chainId) === CLIENT_CHAIN_ID) return;
-
-    const chainHex = `0x${CLIENT_CHAIN_ID.toString(16)}`;
+  async function handleConnectWallet() {
     try {
-      await metamaskProvider.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: chainHex }],
-      });
+      const nextAddress = await connectWalletSession();
+      connectedWalletAddressRef.current = nextAddress;
+      return nextAddress;
     } catch (error) {
-      if (error?.code !== 4902) throw error;
-      await metamaskProvider.request({
-        method: 'wallet_addEthereumChain',
-        params: [
-          {
-            chainId: chainHex,
-            chainName: CLIENT_CHAIN_NAME,
-            rpcUrls: [CLIENT_RPC_URL],
-            nativeCurrency: {
-              name: 'Ether',
-              symbol: CLIENT_CURRENCY_SYMBOL,
-              decimals: 18,
-            },
-          },
-        ],
-      });
+      if (error?.code === 'NO_PROVIDER') {
+        openMetaMaskInstall();
+        if (typeof window !== 'undefined') {
+          window.alert('MetaMask is required to continue.');
+        }
+        return '';
+      }
+
+      const connectErrorDetail = extractMetaMaskErrorDetail(error);
+      if (typeof window !== 'undefined') {
+        console.error('MetaMask connect failed', {
+          code: error?.code,
+          message: error?.message,
+          detail: connectErrorDetail,
+          rawData: error?.data,
+          error,
+        });
+
+        if (error?.code === 4001) {
+          window.alert('MetaMask connection was cancelled.');
+        } else if (error?.code === -32002) {
+          window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
+        } else {
+          const detail = connectErrorDetail.message || error?.message || 'Wallet connection failed.';
+          window.alert(`Connect failed: ${detail}`);
+        }
+      }
+
+      return '';
     }
   }
 
-  async function handleConnectWallet() {
-    const metamaskProvider = getMetaMaskProvider();
-    if (!metamaskProvider) {
-      openMetaMaskInstall();
-      if (typeof window !== 'undefined') {
-        window.alert('MetaMask is required to continue.');
-      }
-      return '';
-    }
-
-    if (connectPromiseRef.current) {
-      return connectPromiseRef.current;
-    }
-
-    const hydrateConnectedWallet = async (accounts) => {
-      const nextAddress = accounts?.[0] || '';
-      if (!nextAddress) {
-        throw new Error('MetaMask did not return a wallet address.');
-      }
-      setWalletAddress(nextAddress);
-      setConnectionStatus('connected');
-      rememberConnectedWallet(nextAddress);
-      setActivePanel('');
-      setWalletProbeDone(true);
-      setWalletDebug((current) => ({
-        ...current,
-        selectedAddress: nextAddress,
-        lastEthAccounts: accounts || [],
-        probeStatus: 'connected',
-        lastErrorCode: '',
-        lastErrorMessage: '',
-        lastErrorDetail: '',
-        lastEvent: 'connect:hydrated',
-      }));
-      await loadProfile(nextAddress);
-      return nextAddress;
-    };
-
-    const connectPromise = (async () => {
-      manualDisconnectRef.current = false;
-      setIsConnecting(true);
-      connectInFlightRef.current = true;
-      setConnectionStatus('connecting');
-      setWalletDebug((current) => ({
-        ...current,
-        providerDetected: true,
-        providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-        selectedAddress: metamaskProvider?.selectedAddress || '',
-        chainId: metamaskProvider?.chainId || '',
-        lastEvent: 'connect:requestAccounts-start',
-        lastErrorCode: '',
-        lastErrorMessage: '',
-        lastErrorDetail: '',
-      }));
-
-      try {
-        let existingAccounts = [];
-        let hadTransientPreflightError = false;
-
-        try {
-          existingAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 1, delayMs: 250 });
-        } catch (error) {
-          if (!isTransientMetaMaskStartupError(error)) {
-            throw error;
-          }
-          hadTransientPreflightError = true;
-          const preflightErrorDetail = extractMetaMaskErrorDetail(error);
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: metamaskProvider?.selectedAddress || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastPermissions: [],
-            lastErrorCode: preflightErrorDetail.code || String(error?.code || ''),
-            lastErrorMessage: preflightErrorDetail.message,
-            lastErrorDetail: preflightErrorDetail.detail,
-            lastErrorAt: new Date().toISOString(),
-            lastEvent: 'connect:preflight-eth_accounts-error',
-          }));
-        }
-
-        if (!hadTransientPreflightError && existingAccounts?.[0]) {
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: existingAccounts?.[0] || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastEthAccounts: existingAccounts || [],
-            lastPermissions: [],
-            probeStatus: 'connected',
-            lastEvent: 'connect:reuse-existing',
-          }));
-          return hydrateConnectedWallet(existingAccounts);
-        }
-
-        if (hadTransientPreflightError) {
-          await new Promise((resolve) => setTimeout(resolve, 450));
-        }
-
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: true,
-          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: metamaskProvider?.selectedAddress || '',
-          chainId: metamaskProvider?.chainId || '',
-          lastPermissions: [],
-          lastEvent: hadTransientPreflightError ? 'connect:requestAccounts-after-preflight-error' : 'connect:requestAccounts-user-gesture',
-        }));
-
-        const accounts = await requestAccounts(metamaskProvider);
-        setWalletDebug((current) => ({
-          ...current,
-          providerDetected: true,
-          providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-          selectedAddress: accounts?.[0] || '',
-          chainId: metamaskProvider?.chainId || '',
-          lastEthAccounts: accounts || [],
-          lastPermissions: [],
-          probeStatus: accounts?.[0] ? 'connected' : 'disconnected',
-          lastEvent: 'connect:requestAccounts-success',
-        }));
-        return await hydrateConnectedWallet(accounts);
-      } catch (error) {
-        const connectErrorDetail = extractMetaMaskErrorDetail(error);
-        if (error?.code !== 4001 && error?.code !== -32002 && isTransientMetaMaskStartupError(error)) {
-          try {
-            const fallbackAccounts = await requestWithRetry(metamaskProvider, 'eth_accounts', { attempts: 2, delayMs: 250 });
-            if (fallbackAccounts?.[0]) {
-              setWalletDebug((current) => ({
-                ...current,
-                selectedAddress: fallbackAccounts?.[0] || '',
-                lastEthAccounts: fallbackAccounts || [],
-                probeStatus: 'connected',
-                lastEvent: 'connect:fallback-eth_accounts',
-              }));
-              return await hydrateConnectedWallet(fallbackAccounts);
-            }
-          } catch {}
-        }
-
-        setConnectionStatus(walletAddressRef.current ? 'connected' : 'disconnected');
-        if (typeof window !== 'undefined') {
-          console.error('MetaMask connect failed', {
-            code: error?.code,
-            message: error?.message,
-            detail: connectErrorDetail,
-            rawData: error?.data,
-            error,
-          });
-          setWalletDebug((current) => ({
-            ...current,
-            providerDetected: true,
-            providerRdns: metamaskProvider?.providerInfo?.rdns || 'io.metamask?',
-            selectedAddress: metamaskProvider?.selectedAddress || '',
-            chainId: metamaskProvider?.chainId || '',
-            lastPermissions: [],
-            lastErrorCode: connectErrorDetail.code || String(error?.code || ''),
-            lastErrorMessage: connectErrorDetail.message,
-            lastErrorDetail: connectErrorDetail.detail,
-            lastErrorAt: new Date().toISOString(),
-            lastEvent: 'connect:error',
-            probeStatus: 'error',
-          }));
-          if (error?.code === 4001) {
-            window.alert('MetaMask connection was cancelled.');
-          } else if (error?.code === -32002) {
-            window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
-          } else {
-            const detail = connectErrorDetail.message || error?.message || 'Wallet connection failed.';
-            window.alert(`Connect failed: ${detail}`);
-          }
-        }
-        return '';
-      } finally {
-        connectInFlightRef.current = false;
-        connectPromiseRef.current = null;
-        setIsConnecting(false);
-      }
-    })();
-
-    connectPromiseRef.current = connectPromise;
-    return connectPromise;
+  async function handleDisconnectWallet() {
+    profileRequestIdRef.current += 1;
+    await disconnectWalletSession();
+    setProfile(null);
+    setActivePanel('');
   }
 
   async function handleOpenWriteFlow() {
@@ -859,39 +270,18 @@ export default function Page() {
       if (!nextAddress) {
         nextAddress = await handleConnectWallet();
         if (!nextAddress) return;
+        connectedWalletAddressRef.current = nextAddress;
       }
 
-      await ensureWriterReady(nextAddress);
+      const profileData = await ensureWriterReady(nextAddress);
+      if (!applyProfileForCurrentAddress(nextAddress, profileData)) return;
+
       await loadProfile(nextAddress);
+      if (!isCurrentConnectedAddress(nextAddress)) return;
       setActivePanel('write');
     } catch (error) {
       setComposeState({ loading: false, message: error?.message || 'Presence verification is required before writing.' });
     }
-  }
-
-  async function handleDisconnectWallet() {
-    manualDisconnectRef.current = true;
-    if (lifecycleRetryTimeoutRef.current) {
-      clearTimeout(lifecycleRetryTimeoutRef.current);
-      lifecycleRetryTimeoutRef.current = null;
-    }
-    probeRequestIdRef.current += 1;
-    probeInFlightRef.current = false;
-    queuedProbeReasonRef.current = '';
-    clearRememberedWallet();
-    setWalletAddress('');
-    setProfile(null);
-    setConnectionStatus('disconnected');
-    setActivePanel('');
-    setWalletProbeDone(true);
-    setWalletDebug((current) => ({
-      ...current,
-      selectedAddress: '',
-      lastEthAccounts: [],
-      lastEvent: 'disconnect',
-      probeStatus: 'disconnected',
-      probeTrace: [],
-    }));
   }
 
   async function handleSearch(event) {
@@ -925,7 +315,7 @@ export default function Page() {
 
   async function handleComposeSubmit(event) {
     event.preventDefault();
-    const metamaskProvider = getMetaMaskProvider();
+    const metamaskProvider = resolveMetaMaskProvider();
     if (!metamaskProvider) {
       setComposeState({ loading: false, message: 'MetaMask is required to write.' });
       return;
@@ -947,15 +337,35 @@ export default function Page() {
 
     try {
       setComposeState({ loading: true, message: 'Preparing transaction…' });
-      await ensureWriterReady(walletAddress);
+      const currentAddress = walletAddress;
+      const profileData = await ensureWriterReady(currentAddress);
+      if (!applyProfileForCurrentAddress(currentAddress, profileData)) {
+        setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
+        return;
+      }
       const provider = new BrowserProvider(metamaskProvider);
-      await ensureWalletOnExpectedChain(provider, metamaskProvider);
+      await ensureWalletOnExpectedChain({
+        browserProvider: provider,
+        metamaskProvider,
+        chainId: CLIENT_CHAIN_ID,
+        chainName: CLIENT_CHAIN_NAME,
+        rpcUrl: CLIENT_RPC_URL,
+        currencySymbol: CLIENT_CURRENCY_SYMBOL,
+      });
+      if (!isCurrentConnectedAddress(currentAddress)) {
+        setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
+        return;
+      }
       const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
       const tx = await contract.writeRecord(content);
       setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
       const receipt = await tx.wait();
-      await Promise.all([loadRecords(), loadProfile(walletAddress)]);
+      if (!isCurrentConnectedAddress(currentAddress)) {
+        setComposeState({ loading: false, message: 'Wallet session changed before confirmation.' });
+        return;
+      }
+      await Promise.all([loadRecords(), loadProfile(currentAddress)]);
       setComposeText('');
       setSearchQuery(receipt.hash);
       setActivePanel('');
