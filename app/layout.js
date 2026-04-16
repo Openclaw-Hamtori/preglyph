@@ -1,5 +1,6 @@
 import { Noto_Naskh_Arabic, Noto_Sans, Noto_Sans_Devanagari, Noto_Sans_JP, Noto_Sans_KR, Noto_Sans_SC } from 'next/font/google';
 import './globals.css';
+import AppProviders from './providers';
 
 const notoSans = Noto_Sans({
   subsets: ['latin'],
@@ -62,7 +63,7 @@ export default function RootLayout({ children }) {
           notoSansDevanagari.variable,
         ].join(' ')}
       >
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

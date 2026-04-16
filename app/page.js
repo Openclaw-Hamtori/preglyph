@@ -9,7 +9,6 @@ import {
   ensureWalletOnExpectedChain,
   extractMetaMaskErrorDetail,
   openMetaMaskInstall,
-  resolveMetaMaskProvider,
 } from '@/lib/wallet/metamask-connector.mjs';
 import { useMetaMaskSession } from '@/lib/wallet/useMetaMaskSession';
 
@@ -80,6 +79,7 @@ export default function Page() {
     chainChangeCount,
     connect: connectWalletSession,
     disconnect: disconnectWalletSession,
+    getConnectedProvider,
   } = useMetaMaskSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -320,7 +320,7 @@ export default function Page() {
 
   async function handleComposeSubmit(event) {
     event.preventDefault();
-    const metamaskProvider = resolveMetaMaskProvider();
+    const metamaskProvider = await getConnectedProvider();
     if (!metamaskProvider) {
       setComposeState({ loading: false, message: 'MetaMask is required to write.' });
       return;
