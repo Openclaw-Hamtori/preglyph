@@ -14,6 +14,7 @@ import {
   clearRememberedWallet,
   shouldRestoreRememberedSession,
   restoreMetaMaskSession,
+  shouldDeferNoProviderDisconnect,
   stripPassiveRetryPrefixes,
   subscribeMetaMaskProvider,
 } from '../../lib/wallet/metamask-connector.mjs';
@@ -169,6 +170,35 @@ test('subscribeMetaMaskProvider wires and unwires the provider connect event', (
   unsubscribe();
 
   assert.equal(listeners.has('connect'), false);
+});
+
+test('shouldDeferNoProviderDisconnect keeps an already-restored wallet session from being overwritten by late no-provider probe results', () => {
+  assert.equal(
+    shouldDeferNoProviderDisconnect({
+      connectionAddress: '0xabc',
+      walletAddress: '',
+      hasActiveProvider: false,
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldDeferNoProviderDisconnect({
+      connectionAddress: '',
+      walletAddress: '0xdef',
+      hasActiveProvider: false,
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldDeferNoProviderDisconnect({
+      connectionAddress: '',
+      walletAddress: '',
+      hasActiveProvider: false,
+    }),
+    false,
+  );
 });
 
 test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider when child providers are partial proxies', () => {
