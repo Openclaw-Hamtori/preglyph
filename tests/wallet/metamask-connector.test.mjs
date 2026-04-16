@@ -181,6 +181,8 @@ test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider w
   const injected = {
     isMetaMask: true,
     isConnected: () => true,
+    request: async () => [],
+    on: () => {},
     providerInfo: { rdns: 'io.metamask' },
     _metamask: {
       isUnlocked: async () => true,
@@ -191,9 +193,33 @@ test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider w
   assert.equal(resolveMetaMaskProvider(injected), injected);
 });
 
+test('resolveMetaMaskProvider ignores a top-level MetaMask wrapper without EIP-1193 events and falls back to a usable nested provider', () => {
+  const nestedMetaMaskProvider = {
+    isMetaMask: true,
+    request: async () => [],
+    on: () => {},
+    providerInfo: { rdns: 'io.metamask' },
+    _metamask: {
+      isUnlocked: async () => true,
+    },
+  };
+  const injected = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    _metamask: {
+      isUnlocked: async () => true,
+    },
+    providers: [nestedMetaMaskProvider],
+  };
+
+  assert.equal(resolveMetaMaskProvider(injected), nestedMetaMaskProvider);
+});
+
 test('resolveMetaMaskProvider still finds MetaMask inside providers when top-level injected object is not MetaMask', () => {
   const nestedMetaMaskProvider = {
     isMetaMask: true,
+    request: async () => [],
+    on: () => {},
     providerInfo: { rdns: 'io.metamask' },
     isConnected: () => true,
   };
