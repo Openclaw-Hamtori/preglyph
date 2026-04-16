@@ -188,8 +188,8 @@ test('connectMetaMask retries a transient eth_requestAccounts startup failure on
     },
   });
 
-  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_requestAccounts']);
-  assert.equal(retryWaits, 1);
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_accounts', 'eth_requestAccounts']);
+  assert.equal(retryWaits, 2);
   assert.equal(result.reusedExisting, false);
   assert.equal(result.hadTransientPreflightError, false);
   assert.deepEqual(result.accounts, ['0xddd']);
@@ -203,7 +203,10 @@ test('connectMetaMask recovers via delayed eth_accounts after a transient eth_re
       calls.push(method);
       if (method === 'eth_accounts') {
         fallbackChecks += 1;
-        return fallbackChecks === 1 ? [] : ['0xeee'];
+        if (fallbackChecks < 3) {
+          return [];
+        }
+        return ['0xeee'];
       }
       if (method === 'eth_requestAccounts') {
         const error = new Error('Unexpected error');
@@ -221,10 +224,116 @@ test('connectMetaMask recovers via delayed eth_accounts after a transient eth_re
     },
   });
 
-  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts']);
-  assert.equal(retryWaits, 1);
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_accounts']);
+  assert.equal(retryWaits, 2);
   assert.equal(result.reusedExisting, true);
   assert.deepEqual(result.accounts, ['0xeee']);
+});
+
+test('connectMetaMask performs a second passive recovery poll if the first fallback restore throws', async () => {
+  const calls = [];
+  let fallbackChecks = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        fallbackChecks += 1;
+        if (fallbackChecks <= 3) {
+          const error = new Error('Unexpected error');
+          error.code = -32603;
+          throw error;
+        }
+        return ['0xabc123'];
+      }
+      if (method === 'eth_requestAccounts') {
+        const error = new Error('Unexpected error');
+        error.code = -32603;
+        throw error;
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  const result = await connectMetaMask(provider, {
+    waitAfterPreflightError: async () => {},
+  });
+
+  assert.deepEqual(calls, [
+    'eth_accounts',
+    'eth_requestAccounts',
+    'eth_accounts',
+    'eth_accounts',
+    'eth_accounts',
+  ]);
+  assert.equal(result.reusedExisting, true);
+  assert.deepEqual(result.accounts, ['0xabc123']);
+});
+
+test('connectMetaMask honors custom recoverAuthorizedAccounts during fallback recovery', async () => {
+  const calls = [];
+  let recoverCalls = 0;
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        return [];
+      }
+      if (method === 'eth_requestAccounts') {
+        const error = new Error('Unexpected error');
+        error.code = -32603;
+        throw error;
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  const result = await connectMetaMask(provider, {
+    waitAfterPreflightError: async () => {},
+    recoverAuthorizedAccounts: async () => {
+      recoverCalls += 1;
+      return recoverCalls === 1
+        ? { accounts: [], address: '' }
+        : { accounts: ['0xfeed'], address: '0xfeed' };
+    },
+  });
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts']);
+  assert.equal(recoverCalls, 2);
+  assert.equal(result.reusedExisting, true);
+  assert.deepEqual(result.accounts, ['0xfeed']);
+});
+
+test('connectMetaMask surfaces non-transient recoverAuthorizedAccounts failures without a second interactive retry', async () => {
+  const calls = [];
+  const provider = {
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_accounts') {
+        return [];
+      }
+      if (method === 'eth_requestAccounts') {
+        const error = new Error('Unexpected error');
+        error.code = -32603;
+        throw error;
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    },
+  };
+
+  const fallbackError = new Error('User rejected recovery');
+  fallbackError.code = 4001;
+
+  await assert.rejects(
+    connectMetaMask(provider, {
+      waitAfterPreflightError: async () => {},
+      recoverAuthorizedAccounts: async () => {
+        throw fallbackError;
+      },
+    }),
+    (error) => error === fallbackError,
+  );
+
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts']);
 });
 
 test('connectMetaMask clamps interactiveRetryAttempts to a single bounded retry', async () => {
@@ -254,6 +363,6 @@ test('connectMetaMask clamps interactiveRetryAttempts to a single bounded retry'
     waitAfterPreflightError: async () => {},
   });
 
-  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_requestAccounts']);
+  assert.deepEqual(calls, ['eth_accounts', 'eth_requestAccounts', 'eth_accounts', 'eth_accounts', 'eth_requestAccounts']);
   assert.deepEqual(result.accounts, ['0xfff']);
 });
