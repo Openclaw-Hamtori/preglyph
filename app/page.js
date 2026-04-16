@@ -330,15 +330,21 @@ export default function Page() {
   }
 
   async function ensureWriterReady(address) {
-    if (!address) return false;
+    if (!address) {
+      throw new Error('Connect a wallet first.');
+    }
 
-    const response = await fetch('/api/writers/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address }),
-    });
+    const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Failed to enable writing.');
+    if (!response.ok) throw new Error(payload.error || 'Failed to load writer status.');
+
+    const profileData = payload.profile || null;
+    setProfile(profileData);
+
+    if (!profileData?.onchainApproved) {
+      throw new Error('Presence verification is required before writing.');
+    }
+
     return true;
   }
 
@@ -848,15 +854,19 @@ export default function Page() {
   async function handleOpenWriteFlow() {
     setComposeState({ loading: false, message: '' });
 
-    let nextAddress = isWalletConnected ? walletAddress : '';
-    if (!nextAddress) {
-      nextAddress = await handleConnectWallet();
-      if (!nextAddress) return;
-    }
+    try {
+      let nextAddress = isWalletConnected ? walletAddress : '';
+      if (!nextAddress) {
+        nextAddress = await handleConnectWallet();
+        if (!nextAddress) return;
+      }
 
-    await ensureWriterReady(nextAddress);
-    await loadProfile(nextAddress);
-    setActivePanel('write');
+      await ensureWriterReady(nextAddress);
+      await loadProfile(nextAddress);
+      setActivePanel('write');
+    } catch (error) {
+      setComposeState({ loading: false, message: error?.message || 'Presence verification is required before writing.' });
+    }
   }
 
   async function handleDisconnectWallet() {
@@ -989,9 +999,9 @@ export default function Page() {
               </button>
               {activePanel === 'menu' ? (
                 <div className="profile-menu glass-panel" role="menu" aria-label="Profile menu">
-                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow}>
+                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow} disabled={!isWriter}>
                     <span>Write</span>
-                    <strong>New record</strong>
+                    <strong>{isWriter ? 'New record' : 'Presence required'}</strong>
                   </button>
                   <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
                     <span>My Preglyph</span>
@@ -1077,9 +1087,9 @@ export default function Page() {
               <div className="glass-subpanel profile-card">
                 <p className="eyebrow">Wallet</p>
                 <strong>{connectedWalletAddress || 'Not connected'}</strong>
-                <span>{activeProfile?.onchainApproved ? 'Ready to write onchain.' : 'Connect to enable writing.'}</span>
+                <span>{activeProfile?.onchainApproved ? 'Ready to write onchain.' : 'Presence verification required before writing.'}</span>
                 <div className="profile-actions wrap-actions">
-                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow}>
+                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow} disabled={!isWriter}>
                     Write
                   </button>
                   <button type="button" className="ghost-chip" onClick={handleDisconnectWallet}>
