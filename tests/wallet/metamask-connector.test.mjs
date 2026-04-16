@@ -273,6 +273,21 @@ test('resolveMetaMaskProvider upgrades MetaMask-style addListener/off providers 
   ]);
 });
 
+test('resolveMetaMaskProvider accepts Brave-style MetaMask providers when MetaMask internals are present', () => {
+  const provider = {
+    isMetaMask: true,
+    isBraveWallet: true,
+    _events: {},
+    _state: {},
+    request: async () => [],
+    on: () => {},
+    removeListener: () => {},
+  };
+
+  const resolved = resolveMetaMaskProvider(provider);
+  assert.equal(resolved, provider);
+});
+
 test('resolveMetaMaskProvider still finds MetaMask inside providers when top-level injected object is not MetaMask', () => {
   const nestedMetaMaskProvider = {
     isMetaMask: true,
