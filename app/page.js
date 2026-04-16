@@ -245,6 +245,11 @@ export default function Page() {
           window.alert('MetaMask connection was cancelled.');
         } else if (error?.code === -32002) {
           window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
+        } else if (error?.code === -32603) {
+          const guidance = error?.metaMaskUnlocked === false
+            ? 'MetaMask is locked. Unlock MetaMask first, then try again.'
+            : 'MetaMask did not complete the request. Open the MetaMask extension, make sure it is unlocked, then try again.';
+          window.alert(guidance);
         } else {
           const detail = connectErrorDetail.message || error?.message || 'Wallet connection failed.';
           window.alert(`Connect failed: ${detail}`);
