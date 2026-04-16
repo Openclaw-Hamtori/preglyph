@@ -6,6 +6,7 @@ import {
   connectMetaMask,
   createMemoryStorage,
   getMetaMaskUnlockState,
+  getRestoreProbeDelayMs,
   getPassiveRetryCount,
   readRememberedSession,
   resolveMetaMaskProvider,
@@ -140,6 +141,11 @@ test('getMetaMaskUnlockState reads the private MetaMask unlock signal when avail
   };
 
   assert.equal(await getMetaMaskUnlockState(provider), false);
+});
+
+test('getRestoreProbeDelayMs gives provider-connect enough time before desktop fallback', () => {
+  assert.equal(getRestoreProbeDelayMs({ mobile: false }), 2500);
+  assert.equal(getRestoreProbeDelayMs({ mobile: true }), 3200);
 });
 
 test('subscribeMetaMaskProvider wires and unwires the provider connect event', () => {
