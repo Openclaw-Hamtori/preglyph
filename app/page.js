@@ -95,6 +95,7 @@ export default function Page() {
   const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
+  const showWalletDebug = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
     if (connectionStatus === 'connected') return;
@@ -350,7 +351,6 @@ export default function Page() {
       }
       const provider = new BrowserProvider(metamaskProvider);
       await ensureWalletOnExpectedChain({
-        browserProvider: provider,
         metamaskProvider,
         chainId: CLIENT_CHAIN_ID,
         chainName: CLIENT_CHAIN_NAME,
@@ -447,44 +447,53 @@ export default function Page() {
         <span className="archive-count-value">{records.length}</span>
       </div>
 
-      <section className="debug-panel glass-panel" aria-label="MetaMask debug panel">
-        <div className="debug-panel-head">
-          <div>
-            <p className="eyebrow">Debug</p>
-            <h3>Wallet session</h3>
-          </div>
-          <span className="debug-badge">temporary</span>
-        </div>
-        <div className="debug-grid">
-          <div className="debug-row"><span>provider</span><strong>{walletDebug.providerDetected ? 'detected' : 'missing'}</strong></div>
-          <div className="debug-row"><span>provider rdns</span><strong>{walletDebug.providerRdns || '—'}</strong></div>
-          <div className="debug-row"><span>probe</span><strong>{walletDebug.probeStatus}</strong></div>
-          <div className="debug-row"><span>wallet state</span><strong>{walletAddress || '—'}</strong></div>
-          <div className="debug-row"><span>selectedAddress</span><strong>{walletDebug.selectedAddress || '—'}</strong></div>
-          <div className="debug-row"><span>chainId</span><strong>{walletDebug.chainId || '—'}</strong></div>
-          <div className="debug-row"><span>probe done</span><strong>{walletProbeDone ? 'true' : 'false'}</strong></div>
-          <div className="debug-row"><span>isConnecting</span><strong>{isConnecting ? 'true' : 'false'}</strong></div>
-          <div className="debug-row"><span>last event</span><strong>{walletDebug.lastEvent}</strong></div>
-          <div className="debug-row"><span>last error code</span><strong>{walletDebug.lastErrorCode || '—'}</strong></div>
-          <div className="debug-row debug-row-wide"><span>last error message</span><strong>{walletDebug.lastErrorMessage || '—'}</strong></div>
-          <div className="debug-row debug-row-wide"><span>last error detail</span><strong>{walletDebug.lastErrorDetail || '—'}</strong></div>
-          <div className="debug-row debug-row-wide">
-            <span>probe trace</span>
-            <div className="debug-trace-list">
-              {walletDebug.probeTrace.length ? (
-                walletDebug.probeTrace.map((entry, index) => (
-                  <code key={`${index}-${entry}`} className="debug-trace-item">{entry}</code>
-                ))
-              ) : (
-                <strong>—</strong>
-              )}
+      {composeState.message ? (
+        <section className="glass-panel status-banner" aria-live="polite">
+          <strong>{composeState.loading ? 'Working' : 'Status'}</strong>
+          <span>{composeState.message}</span>
+        </section>
+      ) : null}
+
+      {showWalletDebug ? (
+        <section className="debug-panel glass-panel" aria-label="MetaMask debug panel">
+          <div className="debug-panel-head">
+            <div>
+              <p className="eyebrow">Debug</p>
+              <h3>Wallet session</h3>
             </div>
+            <span className="debug-badge">temporary</span>
           </div>
-          <div className="debug-row debug-row-wide"><span>eth_accounts</span><strong>{walletDebug.lastEthAccounts.length ? walletDebug.lastEthAccounts.join(', ') : '[]'}</strong></div>
-          <div className="debug-row debug-row-wide"><span>permissions</span><strong>{walletDebug.lastPermissions.length ? JSON.stringify(walletDebug.lastPermissions) : '[]'}</strong></div>
-          <div className="debug-row debug-row-wide"><span>last error at</span><strong>{walletDebug.lastErrorAt || '—'}</strong></div>
-        </div>
-      </section>
+          <div className="debug-grid">
+            <div className="debug-row"><span>provider</span><strong>{walletDebug.providerDetected ? 'detected' : 'missing'}</strong></div>
+            <div className="debug-row"><span>provider rdns</span><strong>{walletDebug.providerRdns || '—'}</strong></div>
+            <div className="debug-row"><span>probe</span><strong>{walletDebug.probeStatus}</strong></div>
+            <div className="debug-row"><span>wallet state</span><strong>{walletAddress || '—'}</strong></div>
+            <div className="debug-row"><span>selectedAddress</span><strong>{walletDebug.selectedAddress || '—'}</strong></div>
+            <div className="debug-row"><span>chainId</span><strong>{walletDebug.chainId || '—'}</strong></div>
+            <div className="debug-row"><span>probe done</span><strong>{walletProbeDone ? 'true' : 'false'}</strong></div>
+            <div className="debug-row"><span>isConnecting</span><strong>{isConnecting ? 'true' : 'false'}</strong></div>
+            <div className="debug-row"><span>last event</span><strong>{walletDebug.lastEvent}</strong></div>
+            <div className="debug-row"><span>last error code</span><strong>{walletDebug.lastErrorCode || '—'}</strong></div>
+            <div className="debug-row debug-row-wide"><span>last error message</span><strong>{walletDebug.lastErrorMessage || '—'}</strong></div>
+            <div className="debug-row debug-row-wide"><span>last error detail</span><strong>{walletDebug.lastErrorDetail || '—'}</strong></div>
+            <div className="debug-row debug-row-wide">
+              <span>probe trace</span>
+              <div className="debug-trace-list">
+                {walletDebug.probeTrace.length ? (
+                  walletDebug.probeTrace.map((entry, index) => (
+                    <code key={`${index}-${entry}`} className="debug-trace-item">{entry}</code>
+                  ))
+                ) : (
+                  <strong>—</strong>
+                )}
+              </div>
+            </div>
+            <div className="debug-row debug-row-wide"><span>eth_accounts</span><strong>{walletDebug.lastEthAccounts.length ? walletDebug.lastEthAccounts.join(', ') : '[]'}</strong></div>
+            <div className="debug-row debug-row-wide"><span>permissions</span><strong>{walletDebug.lastPermissions.length ? JSON.stringify(walletDebug.lastPermissions) : '[]'}</strong></div>
+            <div className="debug-row debug-row-wide"><span>last error at</span><strong>{walletDebug.lastErrorAt || '—'}</strong></div>
+          </div>
+        </section>
+      ) : null}
 
       <main id="top" className="main-layout">
         {activePanel === 'my-preglyph' && isWalletConnected ? (

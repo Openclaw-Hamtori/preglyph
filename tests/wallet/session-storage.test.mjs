@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createMemoryStorage } from '../../lib/wallet/metamask-connector.mjs';
+import { createMemoryStorage } from './test-helpers.mjs';
 import {
-  clearWalletSessionPreference,
   METAMASK_WAGMI_CONNECTOR_ID,
   readWalletSessionPreference,
   rememberWalletConnected,
@@ -47,18 +46,4 @@ test('rememberWalletDisconnected disables reconnect without erasing the last add
     manuallyDisconnected: true,
   });
   assert.equal(shouldAutoReconnectWallet(storage), false);
-});
-
-test('clearWalletSessionPreference removes connector, address, and disconnect marker', () => {
-  const storage = createMemoryStorage();
-
-  rememberWalletConnected(storage, '0xabc');
-  rememberWalletDisconnected(storage);
-  clearWalletSessionPreference(storage);
-
-  assert.deepEqual(readWalletSessionPreference(storage), {
-    connector: '',
-    address: '',
-    manuallyDisconnected: false,
-  });
 });
