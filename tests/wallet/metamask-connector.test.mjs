@@ -233,3 +233,35 @@ test('resolveMetaMaskProvider still finds MetaMask inside providers when top-lev
   assert.equal(typeof resolved.removeListener, 'function');
   assert.equal(resolved.isConnected(), true);
 });
+
+test('resolveMetaMaskProvider prefers a nested event-capable MetaMask provider over a top-level request-only wrapper', () => {
+  const nestedMetaMaskProvider = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    request: async () => [],
+    on: () => {},
+    removeListener: () => {},
+  };
+  const injected = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    request: async () => [],
+    providers: [nestedMetaMaskProvider],
+  };
+
+  const resolved = resolveMetaMaskProvider(injected);
+  assert.equal(resolved, nestedMetaMaskProvider);
+});
+
+test('resolveMetaMaskProvider keeps a request-capable MetaMask wrapper connectable even when listener methods are missing', () => {
+  const provider = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    request: async () => [],
+  };
+
+  const resolved = resolveMetaMaskProvider(provider);
+  assert.equal(typeof resolved?.request, 'function');
+  assert.equal(typeof resolved?.on, 'function');
+  assert.equal(typeof resolved?.removeListener, 'function');
+});
