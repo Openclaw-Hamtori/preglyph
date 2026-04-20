@@ -1,6 +1,6 @@
 'use client';
 
-import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
@@ -10,13 +10,6 @@ import {
   extractMetaMaskErrorDetail,
   openMetaMaskInstall,
 } from '@/lib/wallet/metamask-connector.mjs';
-import {
-  MAX_RECORD_LENGTH,
-  formatWriteFeeLabel,
-  getRecordContentLength,
-  isRecordContentWithinLimit,
-  truncateRecordContent,
-} from '@/lib/write-policy.mjs';
 import { useMetaMaskSession } from '@/lib/wallet/useMetaMaskSession';
 
 const CLIENT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_ID || 31337);
@@ -24,6 +17,7 @@ const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRES
 const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://127.0.0.1:8545';
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
+const MAX_RECORD_LENGTH = 280;
 
 function truncateAddress(address) {
   if (!address) return '';
@@ -91,19 +85,17 @@ export default function Page() {
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
-  const [writeFeeWei, setWriteFeeWei] = useState(null);
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
   const profileRequestIdRef = useRef(0);
   const connectedWalletAddressRef = useRef('');
-  const profileMenuRef = useRef(null);
 
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
+  const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
   const showWalletDebug = process.env.NODE_ENV !== 'production';
-  const writeFeeLabel = writeFeeWei === null ? 'Loading fee…' : formatWriteFeeLabel(writeFeeWei, CLIENT_CURRENCY_SYMBOL);
 
   useEffect(() => {
     if (connectionStatus === 'connected') return;
@@ -127,7 +119,6 @@ export default function Page() {
   useEffect(() => {
     if (!chainChangeCount) return;
     loadRecords();
-    loadWriteFee();
     if (connectedWalletAddress) {
       loadProfile(connectedWalletAddress);
     }
@@ -143,22 +134,6 @@ export default function Page() {
       setSearchResults(null);
     } catch (error) {
       setRecords([]);
-    }
-  }
-
-  async function loadWriteFee() {
-    if (!CLIENT_CONTRACT_ADDRESS) {
-      setWriteFeeWei(null);
-      return;
-    }
-
-    try {
-      const provider = new JsonRpcProvider(CLIENT_RPC_URL);
-      const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, provider);
-      const onchainWriteFee = await contract.WRITE_FEE_WEI();
-      setWriteFeeWei(onchainWriteFee);
-    } catch {
-      setWriteFeeWei(null);
     }
   }
 
@@ -183,13 +158,36 @@ export default function Page() {
     }
   }
 
+  async function ensureWriterReady(address) {
+    if (!address) {
+      throw new Error('Connect a wallet first.');
+    }
+
+    const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Failed to load writer status.');
+
+    const profileData = payload.profile || null;
+    if (!profileData?.onchainApproved) {
+      throw new Error('Presence verification is required before writing.');
+    }
+
+    return profileData;
+  }
+
   function isCurrentConnectedAddress(address) {
     return Boolean(address) && connectedWalletAddressRef.current?.toLowerCase() === address.toLowerCase();
   }
 
+  function applyProfileForCurrentAddress(address, profileData) {
+    if (!isCurrentConnectedAddress(address)) return false;
+    profileRequestIdRef.current += 1;
+    setProfile(profileData);
+    return true;
+  }
+
   useEffect(() => {
     loadRecords();
-    loadWriteFee();
   }, []);
 
   useEffect(() => {
@@ -219,19 +217,6 @@ export default function Page() {
     if (searchQuery.trim()) return;
     setSearchResults(null);
   }, [searchQuery]);
-
-  useEffect(() => {
-    if (activePanel !== 'menu') return undefined;
-
-    const handlePointerDown = (event) => {
-      if (!profileMenuRef.current?.contains(event.target)) {
-        setActivePanel('');
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [activePanel]);
 
   async function handleConnectWallet() {
     try {
@@ -294,11 +279,14 @@ export default function Page() {
         connectedWalletAddressRef.current = nextAddress;
       }
 
+      const profileData = await ensureWriterReady(nextAddress);
+      if (!applyProfileForCurrentAddress(nextAddress, profileData)) return;
+
       await loadProfile(nextAddress);
       if (!isCurrentConnectedAddress(nextAddress)) return;
       setActivePanel('write');
     } catch (error) {
-      setComposeState({ loading: false, message: error?.message || 'Unable to open the write modal.' });
+      setComposeState({ loading: false, message: error?.message || 'Presence verification is required before writing.' });
     }
   }
 
@@ -352,15 +340,12 @@ export default function Page() {
       setComposeState({ loading: false, message: 'Write something first.' });
       return;
     }
-    if (!isRecordContentWithinLimit(content)) {
-      setComposeState({ loading: false, message: `Keep it within ${MAX_RECORD_LENGTH} characters.` });
-      return;
-    }
 
     try {
       setComposeState({ loading: true, message: 'Preparing transaction…' });
       const currentAddress = walletAddress;
-      if (!isCurrentConnectedAddress(currentAddress)) {
+      const profileData = await ensureWriterReady(currentAddress);
+      if (!applyProfileForCurrentAddress(currentAddress, profileData)) {
         setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
         return;
       }
@@ -378,9 +363,7 @@ export default function Page() {
       }
       const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
-      const liveWriteFeeWei = await contract.WRITE_FEE_WEI();
-      setWriteFeeWei(liveWriteFeeWei);
-      const tx = await contract.writeRecord(content, { value: liveWriteFeeWei });
+      const tx = await contract.writeRecord(content);
       setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
       const receipt = await tx.wait();
       if (!isCurrentConnectedAddress(currentAddress)) {
@@ -425,15 +408,15 @@ export default function Page() {
 
         <div className="nav nav-actions">
           {isWalletConnected ? (
-            <div className="profile-menu-shell" ref={profileMenuRef}>
+            <div className="profile-menu-shell">
               <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'menu' ? '' : 'menu')}>
                 Profile
               </button>
               {activePanel === 'menu' ? (
                 <div className="profile-menu glass-panel" role="menu" aria-label="Profile menu">
-                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow}>
+                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow} disabled={!isWriter}>
                     <span>Write</span>
-                    <strong>New Preglyph</strong>
+                    <strong>{isWriter ? 'New record' : 'Presence required'}</strong>
                   </button>
                   <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
                     <span>My Preglyph</span>
@@ -528,9 +511,9 @@ export default function Page() {
               <div className="glass-subpanel profile-card">
                 <p className="eyebrow">Wallet</p>
                 <strong>{connectedWalletAddress || 'Not connected'}</strong>
-                <span>Connected wallets can register permanent records by paying the onchain fee.</span>
+                <span>{activeProfile?.onchainApproved ? 'Ready to write onchain.' : 'Presence verification required before writing.'}</span>
                 <div className="profile-actions wrap-actions">
-                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow}>
+                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow} disabled={!isWriter}>
                     Write
                   </button>
                   <button type="button" className="ghost-chip" onClick={handleDisconnectWallet}>
@@ -561,29 +544,29 @@ export default function Page() {
         ) : null}
 
         {activePanel === 'write' && isWalletConnected ? (
-          <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write preglyph">
+          <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
             <div className="detail-dim" onClick={() => setActivePanel('')} />
             <div className="detail-panel glass-panel write-modal">
-              <button type="button" className="detail-close icon-only" aria-label="Close" onClick={() => setActivePanel('')}>
-                ×
+              <button type="button" className="detail-close" onClick={() => setActivePanel('')}>
+                Close
               </button>
-              <div className="floating-panel-head write-modal-head">
+              <div className="floating-panel-head">
                 <div>
-                  <p className="eyebrow">New Preglyph</p>
-                  <h3>Create a permanent record</h3>
-                  <p className="floating-panel-copy write-modal-copy">Permanent record. Cannot be edited or deleted after inscription.</p>
+                  <p className="eyebrow">Write to Ethereum</p>
+                  <h3>Write a permanent record</h3>
                 </div>
+                <span className="gate-pill unlocked">Connected</span>
               </div>
               <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
                 <textarea
                   value={composeText}
-                  onChange={(event) => setComposeText(truncateRecordContent(event.target.value))}
-                  placeholder="Write up to 100 characters."
+                  onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
+                  placeholder="Write a short permanent public record…"
                 />
                 <div className="compose-footer">
-                  <span>{getRecordContentLength(composeText)} / {MAX_RECORD_LENGTH} · Fee {writeFeeLabel}</span>
-                  <button type="submit" className="connect-chip" disabled={composeState.loading || !isRecordContentWithinLimit(composeText.trim()) || !composeText.trim() || writeFeeWei === null}>
-                    {composeState.loading ? 'Inscribing…' : writeFeeWei === null ? 'Loading fee…' : `Inscribe Preglyph · ${writeFeeLabel}`}
+                  <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
+                  <button type="submit" className="connect-chip" disabled={composeState.loading}>
+                    {composeState.loading ? 'Writing…' : 'Write onchain'}
                   </button>
                 </div>
               </form>

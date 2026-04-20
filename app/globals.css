@@ -556,26 +556,14 @@ time,
 
 .detail-close {
   appearance: none;
-  position: absolute;
-  top: 18px;
-  right: 18px;
+  margin-left: auto;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid var(--panel-border);
   background: rgba(18, 30, 46, 0.9);
   color: var(--text);
   cursor: pointer;
-}
-
-.detail-close.icon-only {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  font-size: 1.35rem;
-  line-height: 1;
 }
 
 .detail-head {
@@ -974,20 +962,7 @@ time,
 
 .info-modal,
 .write-modal {
-  width: min(520px, 100%);
-}
-
-.write-modal {
-  padding-top: 60px;
-}
-
-.write-modal-head {
-  margin-top: 0;
-}
-
-.write-modal-copy {
-  margin-top: 10px;
-  max-width: 34ch;
+  width: min(720px, 100%);
 }
 
 .write-modal-form {
@@ -1032,9 +1007,8 @@ time,
 }
 
 .compose-form textarea {
-  resize: none;
-  min-height: 320px;
-  aspect-ratio: 1 / 1;
+  resize: vertical;
+  min-height: 132px;
   padding: 18px;
   border-radius: 22px;
   border: 1px solid rgba(168, 193, 225, 0.14);
@@ -1144,15 +1118,6 @@ time,
   .detail-body {
     grid-template-columns: 1fr;
     flex-direction: column;
-  }
-
-  .detail-close {
-    top: 14px;
-    right: 14px;
-  }
-
-  .compose-form textarea {
-    min-height: 260px;
   }
 
   .monolith-wrap {
