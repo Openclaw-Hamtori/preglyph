@@ -7,7 +7,9 @@ import {
   openMetaMaskInstall,
   resolveMetaMaskProvider,
   resolveReconnectProvider,
+  revokeMetaMaskPermissions,
   shouldDeferNoProviderDisconnect,
+  shouldReconcileConnectAfterError,
   waitForMetaMaskProvider,
 } from '../../lib/wallet/metamask-connector.mjs';
 
@@ -44,6 +46,29 @@ test('getAuthorizedAccounts returns eth_accounts when available and swallows tra
   assert.deepEqual(await getAuthorizedAccounts(null), []);
 });
 
+test('revokeMetaMaskPermissions requests eth_accounts permission revocation and swallows unsupported providers', async () => {
+  const calls = [];
+  const okProvider = {
+    request: async (payload) => {
+      calls.push(payload);
+      return null;
+    },
+  };
+  const failingProvider = {
+    request: async () => {
+      throw new Error('unsupported');
+    },
+  };
+
+  assert.equal(await revokeMetaMaskPermissions(okProvider), true);
+  assert.deepEqual(calls, [{
+    method: 'wallet_revokePermissions',
+    params: [{ eth_accounts: {} }],
+  }]);
+  assert.equal(await revokeMetaMaskPermissions(failingProvider), false);
+  assert.equal(await revokeMetaMaskPermissions(null), false);
+});
+
 test('waitForMetaMaskProvider returns an already-detected provider immediately', async () => {
   const provider = {
     isMetaMask: true,
@@ -54,6 +79,37 @@ test('waitForMetaMaskProvider returns an already-detected provider immediately',
   const windowObject = { ethereum: provider };
 
   assert.equal(await waitForMetaMaskProvider({ windowObject, timeoutMs: 1 }), provider);
+});
+
+test('waitForMetaMaskProvider performs one delayed retry so late MetaMask injection can still restore a remembered session', async () => {
+  const provider = {
+    isMetaMask: true,
+    request: async () => [],
+    on: () => {},
+    removeListener: () => {},
+  };
+  const listeners = new Map();
+  const windowObject = {
+    ethereum: null,
+    addEventListener(eventName, handler) {
+      listeners.set(eventName, handler);
+    },
+    removeEventListener(eventName) {
+      listeners.delete(eventName);
+    },
+  };
+
+  setTimeout(() => {
+    windowObject.ethereum = provider;
+  }, 20);
+
+  const resolved = await waitForMetaMaskProvider({
+    windowObject,
+    timeoutMs: 5,
+    retryTimeoutMs: 30,
+  });
+
+  assert.equal(resolved, provider);
 });
 
 test('openMetaMaskInstall derives the dapp host dynamically for mobile deep links', () => {
@@ -90,6 +146,35 @@ test('shouldDeferNoProviderDisconnect keeps an already-restored wallet session f
       connectionAddress: '',
       walletAddress: '',
       hasActiveProvider: false,
+    }),
+    false,
+  );
+});
+
+test('shouldReconcileConnectAfterError only recovers historical live sessions from the MetaMask listener-wrapper bug', () => {
+  assert.equal(
+    shouldReconcileConnectAfterError({
+      error: { message: 'L.on is not a function' },
+      errorDetail: 'L.on is not a function',
+      hadConnectedSession: true,
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldReconcileConnectAfterError({
+      error: { message: 'L.on is not a function' },
+      errorDetail: 'L.on is not a function',
+      hadConnectedSession: false,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldReconcileConnectAfterError({
+      error: { code: 4001, message: 'User rejected request' },
+      errorDetail: 'User rejected request',
+      hadConnectedSession: true,
     }),
     false,
   );
