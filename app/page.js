@@ -1,6 +1,6 @@
 'use client';
 
-import { BrowserProvider, Contract } from 'ethers';
+import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
@@ -12,6 +12,7 @@ import {
 } from '@/lib/wallet/metamask-connector.mjs';
 import {
   MAX_RECORD_LENGTH,
+  formatWriteFeeLabel,
   getRecordContentLength,
   isRecordContentWithinLimit,
   truncateRecordContent,
@@ -90,6 +91,7 @@ export default function Page() {
   const [searchResults, setSearchResults] = useState(null);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
+  const [writeFeeWei, setWriteFeeWei] = useState(null);
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
   const profileRequestIdRef = useRef(0);
@@ -101,6 +103,7 @@ export default function Page() {
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = searchResults === null ? records : searchResults;
   const showWalletDebug = process.env.NODE_ENV !== 'production';
+  const writeFeeLabel = writeFeeWei === null ? 'Loading fee…' : formatWriteFeeLabel(writeFeeWei, CLIENT_CURRENCY_SYMBOL);
 
   useEffect(() => {
     if (connectionStatus === 'connected') return;
@@ -124,6 +127,7 @@ export default function Page() {
   useEffect(() => {
     if (!chainChangeCount) return;
     loadRecords();
+    loadWriteFee();
     if (connectedWalletAddress) {
       loadProfile(connectedWalletAddress);
     }
@@ -139,6 +143,22 @@ export default function Page() {
       setSearchResults(null);
     } catch (error) {
       setRecords([]);
+    }
+  }
+
+  async function loadWriteFee() {
+    if (!CLIENT_CONTRACT_ADDRESS) {
+      setWriteFeeWei(null);
+      return;
+    }
+
+    try {
+      const provider = new JsonRpcProvider(CLIENT_RPC_URL);
+      const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, provider);
+      const onchainWriteFee = await contract.WRITE_FEE_WEI();
+      setWriteFeeWei(onchainWriteFee);
+    } catch {
+      setWriteFeeWei(null);
     }
   }
 
@@ -169,6 +189,7 @@ export default function Page() {
 
   useEffect(() => {
     loadRecords();
+    loadWriteFee();
   }, []);
 
   useEffect(() => {
@@ -358,6 +379,7 @@ export default function Page() {
       const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
       const liveWriteFeeWei = await contract.WRITE_FEE_WEI();
+      setWriteFeeWei(liveWriteFeeWei);
       const tx = await contract.writeRecord(content, { value: liveWriteFeeWei });
       setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
       const receipt = await tx.wait();
@@ -549,18 +571,19 @@ export default function Page() {
                 <div>
                   <p className="eyebrow">New Preglyph</p>
                   <h3>Create a permanent record</h3>
+                  <p className="floating-panel-copy write-modal-copy">Permanent record. Cannot be edited or deleted after inscription.</p>
                 </div>
               </div>
               <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
                 <textarea
                   value={composeText}
                   onChange={(event) => setComposeText(truncateRecordContent(event.target.value))}
-                  placeholder="Write"
+                  placeholder="Write up to 100 characters."
                 />
                 <div className="compose-footer">
-                  <span>{getRecordContentLength(composeText)} / {MAX_RECORD_LENGTH}</span>
-                  <button type="submit" className="connect-chip" disabled={composeState.loading || !isRecordContentWithinLimit(composeText.trim()) || !composeText.trim() || !CLIENT_CONTRACT_ADDRESS}>
-                    {composeState.loading ? 'Inscribing…' : 'Inscribe Preglyph'}
+                  <span>{getRecordContentLength(composeText)} / {MAX_RECORD_LENGTH} · Fee {writeFeeLabel}</span>
+                  <button type="submit" className="connect-chip" disabled={composeState.loading || !isRecordContentWithinLimit(composeText.trim()) || !composeText.trim() || writeFeeWei === null}>
+                    {composeState.loading ? 'Inscribing…' : writeFeeWei === null ? 'Loading fee…' : `Inscribe Preglyph · ${writeFeeLabel}`}
                   </button>
                 </div>
               </form>
