@@ -3,6 +3,7 @@ const path = require('node:path');
 const hre = require('hardhat');
 
 const LOCAL_ADMIN_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const DEFAULT_WRITE_FEE_WEI = '1000000000000000';
 const ENV_PATH = path.join(process.cwd(), '.env.local');
 
 function upsertEnvValue(content, key, value) {
@@ -15,8 +16,9 @@ function upsertEnvValue(content, key, value) {
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
+  const writeFeeWei = process.env.PREGLYPH_WRITE_FEE_WEI || process.env.NEXT_PUBLIC_PREGLYPH_WRITE_FEE_WEI || DEFAULT_WRITE_FEE_WEI;
   const factory = await hre.ethers.getContractFactory('PreglyphRegistry');
-  const contract = await factory.deploy(deployer.address);
+  const contract = await factory.deploy(deployer.address, writeFeeWei);
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();
 
@@ -27,6 +29,8 @@ async function main() {
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL', 'http://127.0.0.1:8545');
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CHAIN_NAME', 'Preglyph Testchain');
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL', 'ETH');
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_WRITE_FEE_WEI', writeFeeWei);
+  envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_WRITE_FEE_WEI', writeFeeWei);
   envContent = upsertEnvValue(envContent, 'PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'PREGLYPH_ADMIN_PRIVATE_KEY', LOCAL_ADMIN_PRIVATE_KEY);
@@ -39,6 +43,7 @@ async function main() {
   console.log(JSON.stringify({
     contractAddress,
     owner: deployer.address,
+    writeFeeWei,
     envPath: ENV_PATH,
   }, null, 2));
 }
