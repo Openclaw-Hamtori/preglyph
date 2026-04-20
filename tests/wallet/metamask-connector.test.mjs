@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  getAuthorizedAccounts,
   getMetaMaskUnlockState,
   openMetaMaskInstall,
   resolveMetaMaskProvider,
@@ -26,6 +27,21 @@ test('getMetaMaskUnlockState reads the private MetaMask unlock signal when avail
   };
 
   assert.equal(await getMetaMaskUnlockState(provider), false);
+});
+
+test('getAuthorizedAccounts returns eth_accounts when available and swallows transient errors', async () => {
+  const okProvider = {
+    request: async ({ method }) => (method === 'eth_accounts' ? ['0xabc'] : []),
+  };
+  const failingProvider = {
+    request: async () => {
+      throw new Error('transient');
+    },
+  };
+
+  assert.deepEqual(await getAuthorizedAccounts(okProvider), ['0xabc']);
+  assert.deepEqual(await getAuthorizedAccounts(failingProvider), []);
+  assert.deepEqual(await getAuthorizedAccounts(null), []);
 });
 
 test('waitForMetaMaskProvider returns an already-detected provider immediately', async () => {
@@ -92,6 +108,20 @@ test('resolveReconnectProvider reuses the cached MetaMask provider when fresh de
     cachedProvider,
   );
   assert.equal(resolveReconnectProvider({ detectedProvider: null, cachedProvider: null }), null);
+});
+
+test('resolveReconnectProvider normalizes a cached request-only MetaMask wrapper before reuse', () => {
+  const cachedProvider = {
+    isMetaMask: true,
+    providerInfo: { rdns: 'io.metamask' },
+    request: async () => [],
+  };
+
+  const resolved = resolveReconnectProvider({ detectedProvider: null, cachedProvider });
+
+  assert.equal(typeof resolved?.request, 'function');
+  assert.equal(typeof resolved?.on, 'function');
+  assert.equal(typeof resolved?.removeListener, 'function');
 });
 
 test('resolveMetaMaskProvider prefers the top-level injected MetaMask provider when child providers are partial proxies', () => {
