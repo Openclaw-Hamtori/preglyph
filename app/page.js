@@ -539,15 +539,14 @@ export default function Page() {
           <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
             <div className="detail-dim" onClick={() => setActivePanel('')} />
             <div className="detail-panel glass-panel write-modal">
-              <button type="button" className="detail-close" onClick={() => setActivePanel('')}>
-                Close
-              </button>
               <div className="floating-panel-head">
                 <div>
-                  <p className="eyebrow">Write to Ethereum</p>
+                  <p className="eyebrow">Preglyph</p>
                   <h3>Write a permanent record</h3>
                 </div>
-                <span className="gate-pill unlocked">Connected</span>
+                <button type="button" className="detail-close" onClick={() => setActivePanel('')} aria-label="Close write modal">
+                  ×
+                </button>
               </div>
               <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
                 <div className="write-preview-block">
