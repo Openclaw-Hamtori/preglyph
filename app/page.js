@@ -434,19 +434,19 @@ export default function Page() {
               </button>
               {activePanel === 'menu' ? (
                 <div className="profile-menu glass-panel" role="menu" aria-label="Profile menu">
-                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow} disabled={!isWriter}>
-                    <span>Write</span>
-                    <strong>{isWriter ? 'New record' : 'Presence required'}</strong>
-                  </button>
-                  <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
-                    <span>My Preglyph</span>
-                    <strong>{profileRecords.length} records</strong>
-                  </button>
-                  <div className="profile-menu-divider" />
                   <div className="profile-menu-address">
                     <span>Wallet</span>
                     <strong>{truncateAddress(walletAddress)}</strong>
                   </div>
+                  <div className="profile-menu-divider" />
+                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow} disabled={!isWriter}>
+                    <span>Write</span>
+                    <strong>{isWriter ? 'New Preglyph' : 'Presence required'}</strong>
+                  </button>
+                  <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
+                    <span>My Preglyph</span>
+                    <strong>{profileRecords.length}</strong>
+                  </button>
                   <button type="button" className="profile-menu-item danger" onClick={handleDisconnectWallet}>
                     <span>Disconnect</span>
                     <strong>Disconnect</strong>
