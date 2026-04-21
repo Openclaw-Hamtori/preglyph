@@ -24,15 +24,6 @@ function truncateAddress(address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function relativeTimeFromUnix(timestamp) {
-  if (!timestamp) return 'pending';
-  const diffSeconds = Math.max(1, Math.floor(Date.now() / 1000 - timestamp));
-  if (diffSeconds < 60) return `${diffSeconds}s`;
-  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m`;
-  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h`;
-  return `${Math.floor(diffSeconds / 86400)}d`;
-}
-
 function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -83,6 +74,7 @@ export default function Page() {
   } = useMetaMaskSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
+  const [recordView, setRecordView] = useState('all');
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [fontVersion, setFontVersion] = useState(0);
@@ -95,12 +87,13 @@ export default function Page() {
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
   const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
-  const displayedRecords = searchResults === null ? records : searchResults;
+  const displayedRecords = recordView === 'mine' ? profileRecords : (searchResults === null ? records : searchResults);
   const showWalletDebug = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
     if (connectionStatus === 'connected') return;
-    setActivePanel((current) => (current === 'menu' || current === 'my-preglyph' || current === 'write' ? '' : current));
+    setActivePanel((current) => (current === 'menu' || current === 'write' ? '' : current));
+    setRecordView('all');
   }, [connectionStatus]);
 
   useEffect(() => {
@@ -314,6 +307,7 @@ export default function Page() {
     event.preventDefault();
     const query = searchQuery.trim();
     if (!query) {
+      setRecordView('all');
       setSearchResults(null);
       await loadRecords();
       return;
@@ -327,6 +321,7 @@ export default function Page() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Search failed.');
 
+      setRecordView('all');
       if (payload.record) {
         setSearchResults(null);
         setActiveRecord(payload.record);
@@ -335,8 +330,20 @@ export default function Page() {
 
       setSearchResults(payload.records || []);
     } catch (error) {
+      setRecordView('all');
       setSearchResults([]);
     }
+  }
+
+  function handleShowMyPreglyph() {
+    setSearchQuery('');
+    setSearchResults(null);
+    setActivePanel('');
+    setRecordView('mine');
+  }
+
+  function handleClearRecordView() {
+    setRecordView('all');
   }
 
   async function handleComposeSubmit(event) {
@@ -443,7 +450,7 @@ export default function Page() {
                     <span>Write</span>
                     <strong>{isWriter ? 'New Preglyph' : 'Presence required'}</strong>
                   </button>
-                  <button type="button" className="profile-menu-item" onClick={() => setActivePanel('my-preglyph')}>
+                  <button type="button" className="profile-menu-item" onClick={handleShowMyPreglyph}>
                     <span>My Preglyph</span>
                     <strong>{profileRecords.length}</strong>
                   </button>
@@ -516,51 +523,14 @@ export default function Page() {
       ) : null}
 
       <main id="top" className="main-layout">
-        {activePanel === 'my-preglyph' && isWalletConnected ? (
-          <div className="floating-panel glass-panel profile-panel">
-            <div className="floating-panel-head">
-              <div>
-                <p className="eyebrow">My Preglyph</p>
-                <h3>{connectedWalletAddress ? truncateAddress(connectedWalletAddress) : 'Connect wallet'}</h3>
-              </div>
-              <button type="button" className="ghost-chip" onClick={() => setActivePanel('')}>
-                Close
-              </button>
-            </div>
-            <div className="profile-grid">
-              <div className="glass-subpanel profile-card">
-                <p className="eyebrow">Wallet</p>
-                <strong>{connectedWalletAddress || 'Not connected'}</strong>
-                <span>{activeProfile?.onchainApproved ? 'Ready to write onchain.' : 'Presence verification required before writing.'}</span>
-                <div className="profile-actions wrap-actions">
-                  <button type="button" className="ghost-chip" onClick={handleOpenWriteFlow} disabled={!isWriter}>
-                    Write
-                  </button>
-                  <button type="button" className="ghost-chip" onClick={handleDisconnectWallet}>
-                    Disconnect MetaMask
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="profile-records">
-              <div className="section-row">
-                <h4>My writings</h4>
-                <span>{profileRecords.length} records</span>
-              </div>
-              {profileRecords.length ? (
-                <div className="profile-record-list">
-                  {profileRecords.map((record) => (
-                    <button key={`${record.txHash}-${record.id}`} type="button" className="profile-record-item" onClick={() => setActiveRecord(record)}>
-                      <strong>{record.content}</strong>
-                      <span>{relativeTimeFromUnix(record.createdAt)} · {record.txHash.slice(0, 10)}…</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-copy">No records yet. Connect and write your first permanent record.</p>
-              )}
-            </div>
-          </div>
+        {recordView === 'mine' && isWalletConnected ? (
+          <section className="glass-panel status-banner" aria-live="polite">
+            <strong>Viewing My Preglyph</strong>
+            <span>{truncateAddress(connectedWalletAddress)} · {profileRecords.length} records</span>
+            <button type="button" className="ghost-chip" onClick={handleClearRecordView}>
+              Show all
+            </button>
+          </section>
         ) : null}
 
         {activePanel === 'write' && isWalletConnected ? (
