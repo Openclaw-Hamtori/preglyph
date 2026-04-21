@@ -17,6 +17,7 @@ const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRES
 const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://127.0.0.1:8545';
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
+const WRITE_PREVIEW_SIZE = 10;
 const MAX_RECORD_LENGTH = 280;
 
 function truncateAddress(address) {
@@ -549,6 +550,15 @@ export default function Page() {
                 <span className="gate-pill unlocked">Connected</span>
               </div>
               <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
+                <div className="write-preview-block">
+                  <div className="write-preview-head">
+                    <p className="eyebrow">Live preview</p>
+                    <span>{WRITE_PREVIEW_SIZE} × {WRITE_PREVIEW_SIZE}</span>
+                  </div>
+                  <div className="write-preview-shell glass-subpanel">
+                    <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
+                  </div>
+                </div>
                 <textarea
                   value={composeText}
                   onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}

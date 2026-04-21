@@ -994,6 +994,33 @@ time,
   margin-top: 18px;
 }
 
+.write-preview-block {
+  display: grid;
+  gap: 10px;
+}
+
+.write-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.write-preview-head span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.write-preview-shell {
+  width: min(360px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.write-preview-shell .inscription-shell {
+  width: 100%;
+}
+
 .write-gate-stack {
   display: grid;
   gap: 16px;
