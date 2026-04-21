@@ -399,10 +399,24 @@ export default function Page() {
         return;
       }
       await Promise.all([loadRecords(), loadProfile(currentAddress)]);
+
+      let confirmedRecord = null;
+      try {
+        const detailResponse = await fetch(`/api/records/search?txHash=${encodeURIComponent(receipt.hash)}`, { cache: 'no-store' });
+        const detailPayload = await detailResponse.json();
+        if (detailResponse.ok) {
+          confirmedRecord = detailPayload.record || null;
+        }
+      } catch {}
+
       setComposeText('');
-      setSearchQuery(receipt.hash);
+      setSearchQuery('');
+      setSearchResults(null);
       setActivePanel('');
-      setComposeState({ loading: false, message: `Record confirmed onchain: ${receipt.hash}` });
+      setComposeState({ loading: false, message: '' });
+      if (confirmedRecord) {
+        setActiveRecord(confirmedRecord);
+      }
     } catch (error) {
       setComposeState({ loading: false, message: error.reason || error.shortMessage || error.message || 'Write failed.' });
     }
