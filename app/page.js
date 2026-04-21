@@ -567,11 +567,11 @@ export default function Page() {
                 <textarea
                   value={composeText}
                   onChange={(event) => setComposeText(clampComposeText(event.target.value))}
-                  placeholder="Write a short permanent public record…"
+                  placeholder="Leave a trace that outlives the moment…"
                 />
                 <div className="compose-footer write-modal-actions">
                   <button type="submit" className="connect-chip" disabled={composeState.loading}>
-                    {composeState.loading ? 'Writing…' : 'Write onchain'}
+                    {composeState.loading ? 'Recording…' : 'Record'}
                   </button>
                 </div>
               </form>
