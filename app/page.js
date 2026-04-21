@@ -455,7 +455,6 @@ export default function Page() {
                     <strong>{profileRecords.length}</strong>
                   </button>
                   <button type="button" className="profile-menu-item danger" onClick={handleDisconnectWallet}>
-                    <span>Disconnect</span>
                     <strong>Disconnect</strong>
                   </button>
                 </div>
