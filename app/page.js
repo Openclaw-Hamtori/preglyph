@@ -550,10 +550,6 @@ export default function Page() {
               </div>
               <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
                 <div className="write-preview-block">
-                  <div className="write-preview-head">
-                    <p className="eyebrow">Live preview</p>
-                    <span>{WRITE_PREVIEW_SIZE} × {WRITE_PREVIEW_SIZE}</span>
-                  </div>
                   <div className="write-preview-shell glass-subpanel">
                     <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
                   </div>

@@ -996,25 +996,25 @@ time,
   width: min(720px, 100%);
 }
 
+.write-modal {
+  position: relative;
+}
+
+.write-modal .detail-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
 .write-modal-form {
   margin-top: 18px;
 }
 
 .write-preview-block {
   display: grid;
+  justify-items: center;
   gap: 10px;
-}
-
-.write-preview-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.write-preview-head span {
-  color: var(--muted);
-  font-size: 0.82rem;
 }
 
 .write-preview-shell {
