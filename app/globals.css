@@ -1013,9 +1013,15 @@ time,
 
 .write-modal-warning {
   margin: 0;
-  max-width: 34ch;
-  line-height: 1.5;
-  white-space: normal;
+  max-width: none;
+  font-size: 0.64rem;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.write-modal-actions {
+  justify-content: flex-end;
 }
 
 .write-preview-block {

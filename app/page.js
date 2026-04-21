@@ -572,8 +572,7 @@ export default function Page() {
                   onChange={(event) => setComposeText(clampComposeText(event.target.value))}
                   placeholder="Write a short permanent public record…"
                 />
-                <div className="compose-footer">
-                  <span>{composeText.length} / {MAX_RECORD_LENGTH}</span>
+                <div className="compose-footer write-modal-actions">
                   <button type="submit" className="connect-chip" disabled={composeState.loading}>
                     {composeState.loading ? 'Writing…' : 'Write onchain'}
                   </button>
