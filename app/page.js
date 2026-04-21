@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
+import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
   extractMetaMaskErrorDetail,
@@ -17,8 +18,6 @@ const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRES
 const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://127.0.0.1:8545';
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
-const WRITE_PREVIEW_SIZE = 10;
-const MAX_RECORD_LENGTH = 280;
 
 function truncateAddress(address) {
   if (!address) return '';
@@ -556,7 +555,7 @@ export default function Page() {
               <div className="floating-panel-head">
                 <div>
                   <p className="eyebrow">Preglyph</p>
-                  <h3>Write a permanent record</h3>
+                  <p className="eyebrow write-modal-warning">{WRITE_MODAL_WARNING}</p>
                 </div>
                 <button type="button" className="detail-close" onClick={() => setActivePanel('')} aria-label="Close write modal">
                   ×
@@ -570,7 +569,7 @@ export default function Page() {
                 </div>
                 <textarea
                   value={composeText}
-                  onChange={(event) => setComposeText(event.target.value.slice(0, MAX_RECORD_LENGTH))}
+                  onChange={(event) => setComposeText(clampComposeText(event.target.value))}
                   placeholder="Write a short permanent public record…"
                 />
                 <div className="compose-footer">
