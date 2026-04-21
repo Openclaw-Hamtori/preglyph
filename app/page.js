@@ -89,6 +89,7 @@ export default function Page() {
   const [activePanel, setActivePanel] = useState('');
   const profileRequestIdRef = useRef(0);
   const connectedWalletAddressRef = useRef('');
+  const profileMenuShellRef = useRef(null);
 
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
@@ -101,6 +102,25 @@ export default function Page() {
     if (connectionStatus === 'connected') return;
     setActivePanel((current) => (current === 'menu' || current === 'my-preglyph' || current === 'write' ? '' : current));
   }, [connectionStatus]);
+
+  useEffect(() => {
+    if (activePanel !== 'menu') return undefined;
+
+    function handlePointerDown(event) {
+      if (profileMenuShellRef.current?.contains(event.target)) {
+        return;
+      }
+      setActivePanel('');
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [activePanel]);
 
   useEffect(() => {
     connectedWalletAddressRef.current = connectedWalletAddress;
@@ -408,7 +428,7 @@ export default function Page() {
 
         <div className="nav nav-actions">
           {isWalletConnected ? (
-            <div className="profile-menu-shell">
+            <div className="profile-menu-shell" ref={profileMenuShellRef}>
               <button type="button" className="connect-chip" onClick={() => setActivePanel(activePanel === 'menu' ? '' : 'menu')}>
                 Profile
               </button>
