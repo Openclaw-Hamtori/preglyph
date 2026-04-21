@@ -524,11 +524,13 @@ export default function Page() {
 
       <main id="top" className="main-layout">
         {recordView === 'mine' && isWalletConnected ? (
-          <section className="glass-panel status-banner" aria-live="polite">
-            <strong>Viewing My Preglyph</strong>
-            <span>{truncateAddress(connectedWalletAddress)} · {profileRecords.length} records</span>
-            <button type="button" className="ghost-chip" onClick={handleClearRecordView}>
-              Show all
+          <section className="glass-panel status-banner status-banner-row" aria-live="polite">
+            <div className="status-banner-copy">
+              <strong>My Preglyph</strong>
+              <span>{profileRecords.length} records</span>
+            </div>
+            <button type="button" className="ghost-chip icon-chip" onClick={handleClearRecordView} aria-label="Show all records">
+              ×
             </button>
           </section>
         ) : null}

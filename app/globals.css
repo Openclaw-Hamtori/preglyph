@@ -867,6 +867,31 @@ time,
   color: rgba(233, 240, 252, 0.92);
 }
 
+.status-banner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-banner-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.status-banner-copy span {
+  color: rgba(168, 193, 225, 0.72);
+}
+
+.status-banner-row .icon-chip {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .status-banner.error {
   border-color: rgba(255, 118, 118, 0.18);
 }
