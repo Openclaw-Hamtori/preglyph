@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
+import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
@@ -76,6 +77,7 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [recordView, setRecordView] = useState('all');
+  const [recordsLoading, setRecordsLoading] = useState(true);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [fontVersion, setFontVersion] = useState(0);
@@ -90,6 +92,11 @@ export default function Page() {
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = recordView === 'mine' ? profileRecords : (searchResults === null ? records : searchResults);
   const showComposeBanner = shouldShowComposeBanner(composeState);
+  const showArchiveLoading = shouldShowArchiveLoading({
+    recordsLoading,
+    displayedRecordCount: displayedRecords.length,
+    searchQuery,
+  });
   const composeLoadingHeadline = getComposeLoadingHeadline();
   const showWalletDebug = process.env.NODE_ENV !== 'production';
 
@@ -141,6 +148,7 @@ export default function Page() {
   }, [chainChangeCount, connectedWalletAddress]);
 
   async function loadRecords() {
+    setRecordsLoading(true);
     try {
       const response = await fetch('/api/records', { cache: 'no-store' });
       const payload = await response.json();
@@ -150,6 +158,8 @@ export default function Page() {
       setSearchResults(null);
     } catch (error) {
       setRecords([]);
+    } finally {
+      setRecordsLoading(false);
     }
   }
 
@@ -624,6 +634,12 @@ export default function Page() {
               <p className="eyebrow">No results</p>
               <h3>No records found for that search.</h3>
               <p className="floating-panel-copy">Try a full transaction hash or a different keyword.</p>
+            </div>
+          ) : showArchiveLoading ? (
+            <div className="empty-state glass-panel">
+              <p className="eyebrow">Archive loading</p>
+              <h3>Loading Preglyphs…</h3>
+              <p className="floating-panel-copy">Summoning records from the archive…</p>
             </div>
           ) : (
             <div className="empty-state glass-panel">
