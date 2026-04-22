@@ -420,6 +420,16 @@ export default function Page() {
         setActiveRecord(confirmedRecord);
       }
     } catch (error) {
+      if (typeof window !== 'undefined') {
+        console.error('Preglyph write failed', {
+          reason: error?.reason,
+          shortMessage: error?.shortMessage,
+          message: error?.message,
+          code: error?.code,
+          data: error?.data,
+          error,
+        });
+      }
       setComposeState({ loading: false, message: error.reason || error.shortMessage || error.message || 'Write failed.' });
     }
   }
@@ -579,6 +589,12 @@ export default function Page() {
                     onChange={(event) => setComposeText(clampComposeText(event.target.value))}
                     placeholder="Leave your mark on the universe…"
                   />
+                  {composeState.message ? (
+                    <section className="glass-subpanel status-banner error write-error-panel" aria-live="polite">
+                      <strong>Status</strong>
+                      <span>{composeState.message}</span>
+                    </section>
+                  ) : null}
                   <div className="compose-footer write-modal-actions">
                     <button type="submit" className="connect-chip" disabled={composeState.loading}>
                       {composeState.loading ? 'Recording…' : 'Record'}
