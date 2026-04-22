@@ -1,14 +1,27 @@
 
 import { NextResponse } from 'next/server';
+import { ensureWriterApproval } from '@/lib/chain';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: 'Direct writer approval is disabled. Presence verification must authorize writing.',
-    },
-    { status: 410 },
-  );
+export async function POST(request) {
+  try {
+    const payload = await request.json();
+    const address = payload?.address || '';
+    const result = await ensureWriterApproval(address, true);
+    return NextResponse.json({
+      ok: true,
+      address,
+      approved: true,
+      result,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Failed to enable writing.',
+      },
+      { status: 500 },
+    );
+  }
 }

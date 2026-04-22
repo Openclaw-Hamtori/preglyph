@@ -7,6 +7,7 @@ import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionT
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
+import { ensureWritableProfile } from '@/lib/write-access.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -88,7 +89,6 @@ export default function Page() {
 
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
-  const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = recordView === 'mine' ? profileRecords : (searchResults === null ? records : searchResults);
   const showComposeBanner = shouldShowComposeBanner(composeState);
@@ -185,20 +185,7 @@ export default function Page() {
   }
 
   async function ensureWriterReady(address) {
-    if (!address) {
-      throw new Error('Connect a wallet first.');
-    }
-
-    const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || 'Failed to load writer status.');
-
-    const profileData = payload.profile || null;
-    if (!profileData?.onchainApproved) {
-      throw new Error('Presence verification is required before writing.');
-    }
-
-    return profileData;
+    return ensureWritableProfile({ address });
   }
 
   function isCurrentConnectedAddress(address) {
@@ -312,7 +299,7 @@ export default function Page() {
       if (!isCurrentConnectedAddress(nextAddress)) return;
       setActivePanel('write');
     } catch (error) {
-      setComposeState({ loading: false, message: error?.message || 'Presence verification is required before writing.' });
+      setComposeState({ loading: false, message: error?.message || 'Failed to open the write flow.' });
     }
   }
 
@@ -483,9 +470,9 @@ export default function Page() {
                     <strong>{truncateAddress(walletAddress)}</strong>
                   </div>
                   <div className="profile-menu-divider" />
-                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow} disabled={!isWriter}>
+                  <button type="button" className="profile-menu-item" onClick={handleOpenWriteFlow}>
                     <span>Write</span>
-                    <strong>{isWriter ? 'New Preglyph' : 'Presence required'}</strong>
+                    <strong>New Preglyph</strong>
                   </button>
                   <button type="button" className="profile-menu-item" onClick={handleShowMyPreglyph}>
                     <span>My Preglyph</span>
