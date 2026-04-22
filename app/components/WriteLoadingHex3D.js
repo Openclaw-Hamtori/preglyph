@@ -42,7 +42,7 @@ function LoadingSlabMesh({ text, fontVersion = 0 }) {
   });
 
   return (
-    <group ref={groupRef} rotation={[0.24, 0, 0]} position={[0, 0, 0]} scale={0.88}>
+    <group ref={groupRef} rotation={[0.24, 0, 0]} position={[0, 0, 0]} scale={0.8}>
       <mesh material={materials}>
         <boxGeometry args={[2.18, 2.18, 2.18]} />
       </mesh>
@@ -53,7 +53,7 @@ function LoadingSlabMesh({ text, fontVersion = 0 }) {
 export default function WriteLoadingHex3D({ text = ' ', fontVersion = 0 }) {
   return (
     <div className="write-loading-3d-stage" aria-hidden="true">
-      <Canvas className="write-loading-3d-canvas" dpr={[1, 1.75]} camera={{ position: [0, 0, 6.4], fov: 22 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas className="write-loading-3d-canvas" dpr={[1, 1.75]} camera={{ position: [0, 0, 7.1], fov: 22 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={0.92} color="#d7e1ef" />
         <directionalLight position={[2.8, 3.2, 5.4]} intensity={1.4} color="#f3f7fd" />
         <directionalLight position={[-2.2, -1.4, 3.2]} intensity={0.58} color="#aec1db" />

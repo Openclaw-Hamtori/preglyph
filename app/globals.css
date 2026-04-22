@@ -1032,9 +1032,10 @@ time,
 }
 
 .write-loading-3d-stage {
-  width: min(220px, 70vw);
+  width: min(244px, 72vw);
   aspect-ratio: 1;
-  margin: 2px auto 0;
+  margin: 4px auto 2px;
+  overflow: visible;
   filter: drop-shadow(0 14px 34px rgba(103, 156, 255, 0.16));
 }
 
