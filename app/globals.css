@@ -1017,9 +1017,12 @@ time,
 
 .write-loading-panel {
   margin-top: 22px;
-  padding: 32px 24px;
+  padding: 30px 24px 28px;
   border-radius: 24px;
   text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
 }
 
 .write-loading-panel h3 {
@@ -1028,8 +1031,21 @@ time,
   letter-spacing: -0.03em;
 }
 
+.write-loading-3d-stage {
+  width: min(220px, 70vw);
+  aspect-ratio: 1;
+  margin: 2px auto 0;
+  filter: drop-shadow(0 14px 34px rgba(103, 156, 255, 0.16));
+}
+
+.write-loading-3d-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  cursor: default;
+}
+
 .write-loading-panel p:last-child {
-  margin: 12px 0 0;
+  margin: -4px 0 0;
   color: var(--muted);
   overflow-wrap: anywhere;
 }

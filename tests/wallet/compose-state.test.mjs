@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   shouldShowComposeBanner,
   getComposeLoadingHeadline,
+  shouldShowComposeLoadingDetail,
   isUserRejectedComposeError,
 } from '../../lib/compose-state.mjs';
 
@@ -18,6 +19,11 @@ test('compose banner still shows non-loading error/status messages', () => {
 
 test('compose loading headline keeps the modal in a preglyph-specific loading mode', () => {
   assert.equal(getComposeLoadingHeadline(), 'Recording Preglyph');
+});
+
+test('compose loading panel hides transient transaction subcopy', () => {
+  assert.equal(shouldShowComposeLoadingDetail({ loading: true, message: 'Preparing transaction…' }), false);
+  assert.equal(shouldShowComposeLoadingDetail({ loading: true, message: '' }), false);
 });
 
 test('compose flow treats wallet rejection as a silent cancel', () => {

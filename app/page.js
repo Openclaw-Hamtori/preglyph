@@ -3,10 +3,11 @@
 import { BrowserProvider, Contract } from 'ethers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
+import WriteLoadingHex3D from './components/WriteLoadingHex3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
-import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
+import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner, shouldShowComposeLoadingDetail } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -568,9 +569,11 @@ export default function Page() {
               </div>
               {composeState.loading ? (
                 <section className="glass-subpanel write-loading-panel" aria-live="polite">
-                  <p className="eyebrow">Preglyph</p>
+                  <WriteLoadingHex3D />
                   <h3>{composeLoadingHeadline}</h3>
-                  <p>{composeState.message || 'Finalizing your record onchain…'}</p>
+                  {shouldShowComposeLoadingDetail(composeState) ? (
+                    <p>{composeState.message || 'Finalizing your record onchain…'}</p>
+                  ) : null}
                 </section>
               ) : (
                 <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
