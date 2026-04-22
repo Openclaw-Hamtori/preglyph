@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
+import { getComposeLoadingHeadline, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -88,6 +89,8 @@ export default function Page() {
   const isWriter = Boolean(activeProfile?.onchainApproved);
   const profileRecords = activeProfile?.records || [];
   const displayedRecords = recordView === 'mine' ? profileRecords : (searchResults === null ? records : searchResults);
+  const showComposeBanner = shouldShowComposeBanner(composeState);
+  const composeLoadingHeadline = getComposeLoadingHeadline();
   const showWalletDebug = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
@@ -487,9 +490,9 @@ export default function Page() {
         <span className="archive-count-value">{records.length}</span>
       </div>
 
-      {composeState.message ? (
+      {showComposeBanner ? (
         <section className="glass-panel status-banner" aria-live="polite">
-          <strong>{composeState.loading ? 'Working' : 'Status'}</strong>
+          <strong>Status</strong>
           <span>{composeState.message}</span>
         </section>
       ) : null}
@@ -558,23 +561,31 @@ export default function Page() {
                   <p className="eyebrow write-modal-warning">{WRITE_MODAL_WARNING}</p>
                 </div>
               </div>
-              <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
-                <div className="write-preview-block">
-                  <div className="write-preview-shell glass-subpanel">
-                    <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
+              {composeState.loading ? (
+                <section className="glass-subpanel write-loading-panel" aria-live="polite">
+                  <p className="eyebrow">Preglyph</p>
+                  <h3>{composeLoadingHeadline}</h3>
+                  <p>{composeState.message || 'Finalizing your record onchain…'}</p>
+                </section>
+              ) : (
+                <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
+                  <div className="write-preview-block">
+                    <div className="write-preview-shell glass-subpanel">
+                      <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
+                    </div>
                   </div>
-                </div>
-                <textarea
-                  value={composeText}
-                  onChange={(event) => setComposeText(clampComposeText(event.target.value))}
-                  placeholder="Leave your mark on the universe…"
-                />
-                <div className="compose-footer write-modal-actions">
-                  <button type="submit" className="connect-chip" disabled={composeState.loading}>
-                    {composeState.loading ? 'Recording…' : 'Record'}
-                  </button>
-                </div>
-              </form>
+                  <textarea
+                    value={composeText}
+                    onChange={(event) => setComposeText(clampComposeText(event.target.value))}
+                    placeholder="Leave your mark on the universe…"
+                  />
+                  <div className="compose-footer write-modal-actions">
+                    <button type="submit" className="connect-chip" disabled={composeState.loading}>
+                      {composeState.loading ? 'Recording…' : 'Record'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         ) : null}
