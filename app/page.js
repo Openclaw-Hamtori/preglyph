@@ -259,7 +259,7 @@ export default function Page() {
         });
 
         if (error?.code === 4001) {
-          window.alert('MetaMask connection was cancelled.');
+          return '';
         } else if (error?.code === -32002) {
           window.alert('MetaMask already has a pending connection request. Open MetaMask and finish or cancel it first.');
         } else if (error?.code === -32603) {
