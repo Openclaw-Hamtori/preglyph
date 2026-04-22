@@ -5,6 +5,7 @@ import {
   getAuthorizedAccounts,
   getMetaMaskUnlockState,
   openMetaMaskInstall,
+  requestAccounts,
   resolveMetaMaskProvider,
   resolveReconnectProvider,
   shouldDeferNoProviderDisconnect,
@@ -42,6 +43,20 @@ test('getAuthorizedAccounts returns eth_accounts when available and swallows tra
   assert.deepEqual(await getAuthorizedAccounts(okProvider), ['0xabc']);
   assert.deepEqual(await getAuthorizedAccounts(failingProvider), []);
   assert.deepEqual(await getAuthorizedAccounts(null), []);
+});
+
+test('requestAccounts issues a single eth_requestAccounts call and returns accounts', async () => {
+  const calls = [];
+  const provider = {
+    request: async ({ method }) => {
+      calls.push(method);
+      return method === 'eth_requestAccounts' ? ['0xabc'] : [];
+    },
+  };
+
+  assert.deepEqual(await requestAccounts(provider), ['0xabc']);
+  assert.deepEqual(calls, ['eth_requestAccounts']);
+  assert.deepEqual(await requestAccounts(null), []);
 });
 
 test('waitForMetaMaskProvider returns an already-detected provider immediately', async () => {
