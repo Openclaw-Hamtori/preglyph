@@ -3,52 +3,62 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { MATRIX_SIZE, createGlyphTexture } from './inscriptionTexture';
 
-function HexArtifact() {
-  const meshRef = useRef(null);
-  const material = useMemo(
-    () => new THREE.MeshPhysicalMaterial({
-      color: '#8b97aa',
-      roughness: 0.38,
-      metalness: 0.22,
-      clearcoat: 0.82,
-      clearcoatRoughness: 0.36,
-      reflectivity: 0.46,
-      emissive: new THREE.Color('#d9f1ff'),
-      emissiveIntensity: 0.08,
-    }),
-    []
+function LoadingSlabMesh({ text, fontVersion = 0 }) {
+  const groupRef = useRef(null);
+  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base'), [text, fontVersion]);
+  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow'), [text, fontVersion]);
+  const materials = useMemo(
+    () =>
+      Array.from({ length: 6 }, () =>
+        new THREE.MeshStandardMaterial({
+          map: glyphTexture,
+          emissiveMap: glowTexture,
+          emissive: '#d8f0ff',
+          emissiveIntensity: 0,
+          roughness: 0.56,
+          metalness: 0.32,
+          color: '#8d99aa',
+        })
+      ),
+    [glyphTexture, glowTexture]
   );
 
   useFrame((state, delta) => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
+    const group = groupRef.current;
+    if (!group) return;
 
     const t = state.clock.elapsedTime;
-    mesh.rotation.y += delta * 0.24;
-    mesh.rotation.x = 0.42 + Math.sin(t * 0.42) * 0.045;
-    mesh.rotation.z = Math.sin(t * 0.27) * 0.05;
-    mesh.position.y = Math.sin(t * 0.5) * 0.035;
-    material.emissiveIntensity = 0.08 + ((Math.sin(t * 1.15) + 1) / 2) * 0.24;
+    group.rotation.y += delta * 0.18;
+    group.rotation.x = 0.26 + Math.sin(t * 0.38) * 0.025;
+    group.rotation.z = Math.sin(t * 0.24) * 0.02;
+
+    const target = 0.08 + ((Math.sin(t * 0.95) + 1) / 2) * 0.16;
+    const blend = 1 - Math.exp(-4 * delta);
+    materials.forEach((material) => {
+      material.emissiveIntensity = THREE.MathUtils.lerp(material.emissiveIntensity, target, blend);
+    });
   });
 
   return (
-    <mesh ref={meshRef} material={material}>
-      <cylinderGeometry args={[1.08, 1.08, 1.24, 6, 1, false]} />
-    </mesh>
+    <group ref={groupRef} rotation={[0.24, 0, 0]} position={[0, 0, 0]} scale={0.88}>
+      <mesh material={materials}>
+        <boxGeometry args={[2.18, 2.18, 2.18]} />
+      </mesh>
+    </group>
   );
 }
 
-export default function WriteLoadingHex3D() {
+export default function WriteLoadingHex3D({ text = ' ', fontVersion = 0 }) {
   return (
     <div className="write-loading-3d-stage" aria-hidden="true">
-      <Canvas className="write-loading-3d-canvas" dpr={[1, 1.75]} camera={{ position: [0, 0, 4.6], fov: 24 }} gl={{ antialias: true, alpha: true }}>
-        <ambientLight intensity={0.7} color="#d7e3f7" />
-        <directionalLight position={[2.2, 3.2, 4.8]} intensity={1.5} color="#f6fbff" />
-        <directionalLight position={[-2.4, -1.6, 3.5]} intensity={0.58} color="#9db7d9" />
-        <pointLight position={[0, 0.3, 2.7]} intensity={0.48} color="#dff4ff" />
-        <pointLight position={[0, 1.8, -1.8]} intensity={0.18} color="#89b6ff" />
-        <HexArtifact />
+      <Canvas className="write-loading-3d-canvas" dpr={[1, 1.75]} camera={{ position: [0, 0, 6.4], fov: 22 }} gl={{ antialias: true, alpha: true }}>
+        <ambientLight intensity={0.92} color="#d7e1ef" />
+        <directionalLight position={[2.8, 3.2, 5.4]} intensity={1.4} color="#f3f7fd" />
+        <directionalLight position={[-2.2, -1.4, 3.2]} intensity={0.58} color="#aec1db" />
+        <pointLight position={[0.2, 1.5, 4]} intensity={0.18} color="#dce8f7" />
+        <LoadingSlabMesh text={text} fontVersion={fontVersion} />
       </Canvas>
     </div>
   );

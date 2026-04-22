@@ -569,7 +569,7 @@ export default function Page() {
               </div>
               {composeState.loading ? (
                 <section className="glass-subpanel write-loading-panel" aria-live="polite">
-                  <WriteLoadingHex3D />
+                  <WriteLoadingHex3D text={composeText.trim() || ' '} fontVersion={fontVersion} />
                   <h3>{composeLoadingHeadline}</h3>
                   {shouldShowComposeLoadingDetail(composeState) ? (
                     <p>{composeState.message || 'Finalizing your record onchain…'}</p>
