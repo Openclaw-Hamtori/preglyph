@@ -549,9 +549,10 @@ time,
   position: relative;
   z-index: 1;
   width: min(980px, 100%);
-  padding: 22px;
-  border-radius: 28px;
-  background: rgba(10, 18, 30, 0.94);
+  max-height: min(84vh, 920px);
+  overflow-x: visible;
+  overflow-y: auto;
+  padding: 34px;
 }
 
 .detail-close {
@@ -635,9 +636,10 @@ time,
 .detail-3d-stage {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   aspect-ratio: 1 / 1;
-  margin: 8px auto 0;
+  margin: 10px auto 4px;
+  overflow: visible;
 }
 
 .detail-canvas {
