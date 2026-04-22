@@ -6,7 +6,7 @@ import DetailSlab3D from './components/DetailSlab3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
-import { getComposeLoadingHeadline, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
+import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -101,7 +101,13 @@ export default function Page() {
 
   useEffect(() => {
     if (connectionStatus === 'connected') return;
-    setActivePanel((current) => (current === 'menu' || current === 'write' ? '' : current));
+    setActivePanel((current) => {
+      if (current === 'write') {
+        setComposeState({ loading: false, message: '' });
+        return '';
+      }
+      return current === 'menu' ? '' : current;
+    });
     setRecordView('all');
   }, [connectionStatus]);
 
@@ -195,13 +201,17 @@ export default function Page() {
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         setActiveRecord(null);
+        if (activePanel === 'write') {
+          handleCloseWriteFlow();
+          return;
+        }
         setActivePanel('');
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [activePanel]);
 
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts?.ready) return undefined;
@@ -284,6 +294,11 @@ export default function Page() {
     } catch (error) {
       setComposeState({ loading: false, message: error?.message || 'Failed to open the write flow.' });
     }
+  }
+
+  function handleCloseWriteFlow() {
+    setComposeState({ loading: false, message: '' });
+    setActivePanel('');
   }
 
   async function handleSearch(event) {
@@ -395,6 +410,11 @@ export default function Page() {
         setActiveRecord(confirmedRecord);
       }
     } catch (error) {
+      if (isUserRejectedComposeError(error)) {
+        setComposeState({ loading: false, message: '' });
+        return;
+      }
+
       if (typeof window !== 'undefined') {
         console.error('Preglyph write failed', {
           reason: error?.reason,
@@ -538,7 +558,7 @@ export default function Page() {
 
         {activePanel === 'write' && isWalletConnected ? (
           <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
-            <div className="detail-dim" onClick={() => setActivePanel('')} />
+            <div className="detail-dim" onClick={handleCloseWriteFlow} />
             <div className="detail-panel glass-panel write-modal">
               <div className="floating-panel-head write-modal-head">
                 <div className="write-modal-copy">
