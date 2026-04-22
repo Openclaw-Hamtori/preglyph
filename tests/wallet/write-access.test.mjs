@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { ensureWritableProfile } from '../../lib/write-access.mjs';
 
-test('ensureWritableProfile returns existing approved profile without extra approval call', async () => {
+test('ensureWritableProfile keeps an already approved profile shape', async () => {
   const calls = [];
   const profile = { address: '0xabc', onchainApproved: true, records: [] };
   const fetchImpl = async (url) => {
@@ -21,55 +21,33 @@ test('ensureWritableProfile returns existing approved profile without extra appr
   assert.deepEqual(calls, ['/api/profile/0xabc']);
 });
 
-test('ensureWritableProfile auto-approves an unapproved profile', async () => {
+test('ensureWritableProfile upgrades an unapproved profile without a separate approval request', async () => {
   const calls = [];
-  const fetchImpl = async (url, options = {}) => {
-    calls.push({ url, options });
-    if (url === '/api/profile/0xabc') {
-      return {
-        ok: true,
-        async json() {
-          return { ok: true, profile: { address: '0xabc', onchainApproved: false, records: [] } };
-        },
-      };
-    }
-
+  const fetchImpl = async (url) => {
+    calls.push(url);
     return {
       ok: true,
       async json() {
-        return { ok: true, approved: true };
+        return { ok: true, profile: { address: '0xabc', onchainApproved: false, records: [] } };
       },
     };
   };
 
   const result = await ensureWritableProfile({ address: '0xabc', fetchImpl });
   assert.equal(result.onchainApproved, true);
-  assert.equal(calls[1].url, '/api/writers/approve');
-  assert.equal(calls[1].options.method, 'POST');
-  assert.match(calls[1].options.body, /0xabc/);
+  assert.deepEqual(calls, ['/api/profile/0xabc']);
 });
 
-test('ensureWritableProfile surfaces approval failures', async () => {
-  const fetchImpl = async (url) => {
-    if (url === '/api/profile/0xabc') {
-      return {
-        ok: true,
-        async json() {
-          return { ok: true, profile: { address: '0xabc', onchainApproved: false, records: [] } };
-        },
-      };
-    }
-
-    return {
-      ok: false,
-      async json() {
-        return { ok: false, error: 'Approval failed.' };
-      },
-    };
-  };
+test('ensureWritableProfile surfaces profile fetch failures', async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    async json() {
+      return { ok: false, error: 'Profile failed.' };
+    },
+  });
 
   await assert.rejects(
     ensureWritableProfile({ address: '0xabc', fetchImpl }),
-    /Approval failed\./,
+    /Profile failed\./,
   );
 });

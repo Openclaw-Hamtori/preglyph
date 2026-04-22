@@ -7,7 +7,6 @@ import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionT
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, shouldShowComposeBanner } from '@/lib/compose-state.mjs';
-import { ensureWritableProfile } from '@/lib/write-access.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -184,19 +183,8 @@ export default function Page() {
     }
   }
 
-  async function ensureWriterReady(address) {
-    return ensureWritableProfile({ address });
-  }
-
   function isCurrentConnectedAddress(address) {
     return Boolean(address) && connectedWalletAddressRef.current?.toLowerCase() === address.toLowerCase();
-  }
-
-  function applyProfileForCurrentAddress(address, profileData) {
-    if (!isCurrentConnectedAddress(address)) return false;
-    profileRequestIdRef.current += 1;
-    setProfile(profileData);
-    return true;
   }
 
   useEffect(() => {
@@ -292,11 +280,6 @@ export default function Page() {
         connectedWalletAddressRef.current = nextAddress;
       }
 
-      const profileData = await ensureWriterReady(nextAddress);
-      if (!applyProfileForCurrentAddress(nextAddress, profileData)) return;
-
-      await loadProfile(nextAddress);
-      if (!isCurrentConnectedAddress(nextAddress)) return;
       setActivePanel('write');
     } catch (error) {
       setComposeState({ loading: false, message: error?.message || 'Failed to open the write flow.' });
@@ -371,11 +354,6 @@ export default function Page() {
     try {
       setComposeState({ loading: true, message: 'Preparing transaction…' });
       const currentAddress = walletAddress;
-      const profileData = await ensureWriterReady(currentAddress);
-      if (!applyProfileForCurrentAddress(currentAddress, profileData)) {
-        setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
-        return;
-      }
       const provider = new BrowserProvider(metamaskProvider);
       await ensureWalletOnExpectedChain({
         metamaskProvider,

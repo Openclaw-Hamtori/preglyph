@@ -3,14 +3,17 @@ const hre = require('hardhat');
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
   const factory = await hre.ethers.getContractFactory('PreglyphRegistry');
-  const contract = await factory.deploy(deployer.address);
+  const contract = await factory.deploy();
+  const deploymentTx = contract.deploymentTransaction();
+  const receipt = deploymentTx ? await deploymentTx.wait() : null;
   await contract.waitForDeployment();
 
   console.log(
     JSON.stringify(
       {
         contractAddress: await contract.getAddress(),
-        owner: deployer.address,
+        deployer: deployer.address,
+        deployBlock: receipt?.blockNumber || null,
         network: hre.network.name,
         chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
       },

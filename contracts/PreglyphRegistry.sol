@@ -2,8 +2,6 @@
 pragma solidity ^0.8.24;
 
 contract PreglyphRegistry {
-    error NotOwner();
-    error WriterNotApproved();
     error EmptyContent();
     error ContentTooLong();
 
@@ -16,35 +14,12 @@ contract PreglyphRegistry {
         uint256 createdAt;
     }
 
-    address public immutable owner;
     uint256 public recordCount;
-
-    mapping(address => bool) public approvedWriters;
     mapping(uint256 => Record) private records;
 
-    event WriterApprovalUpdated(address indexed writer, bool approved, uint256 updatedAt);
     event RecordWritten(uint256 indexed recordId, address indexed author, string content, uint256 createdAt);
 
-    constructor(address initialOwner) {
-        owner = initialOwner;
-    }
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
-    }
-
-    modifier onlyApprovedWriter() {
-        if (!approvedWriters[msg.sender]) revert WriterNotApproved();
-        _;
-    }
-
-    function setWriterApproval(address writer, bool approved) external onlyOwner {
-        approvedWriters[writer] = approved;
-        emit WriterApprovalUpdated(writer, approved, block.timestamp);
-    }
-
-    function writeRecord(string calldata content) external onlyApprovedWriter returns (uint256 recordId) {
+    function writeRecord(string calldata content) external returns (uint256 recordId) {
         bytes memory contentBytes = bytes(content);
         if (contentBytes.length == 0) revert EmptyContent();
         if (contentBytes.length > MAX_CONTENT_LENGTH) revert ContentTooLong();

@@ -1,22 +1,18 @@
-
 import { NextResponse } from 'next/server';
-import { getOnchainWriterStatus, getRecords } from '@/lib/chain';
+import { getRecords } from '@/lib/chain';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_request, { params }) {
   try {
     const { address } = params;
-    const [onchainApproved, records] = await Promise.all([
-      getOnchainWriterStatus(address),
-      getRecords({ author: address }),
-    ]);
+    const records = await getRecords({ author: address });
 
     return NextResponse.json({
       ok: true,
       profile: {
         address,
-        onchainApproved,
+        onchainApproved: true,
         records,
       },
     });

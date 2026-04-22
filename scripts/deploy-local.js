@@ -16,7 +16,9 @@ function upsertEnvValue(content, key, value) {
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
   const factory = await hre.ethers.getContractFactory('PreglyphRegistry');
-  const contract = await factory.deploy(deployer.address);
+  const contract = await factory.deploy();
+  const deploymentTx = contract.deploymentTransaction();
+  const receipt = deploymentTx ? await deploymentTx.wait() : null;
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();
 
@@ -29,6 +31,7 @@ async function main() {
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL', 'ETH');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS', contractAddress);
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_DEPLOY_BLOCK', String(receipt?.blockNumber || 0));
   envContent = upsertEnvValue(envContent, 'PREGLYPH_ADMIN_PRIVATE_KEY', LOCAL_ADMIN_PRIVATE_KEY);
   envContent = upsertEnvValue(envContent, 'PREGLYPH_PRESENCE_SERVICE_ID', 'noctu');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_PRESENCE_FLOW_TYPE', 'verify');
@@ -38,7 +41,8 @@ async function main() {
 
   console.log(JSON.stringify({
     contractAddress,
-    owner: deployer.address,
+    deployer: deployer.address,
+    deployBlock: receipt?.blockNumber || null,
     envPath: ENV_PATH,
   }, null, 2));
 }

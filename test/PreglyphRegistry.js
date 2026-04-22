@@ -4,40 +4,15 @@ const { ethers } = require('hardhat');
 
 describe('PreglyphRegistry', function () {
   async function deployFixture() {
-    const [owner, writer, other] = await ethers.getSigners();
+    const [writer, other] = await ethers.getSigners();
     const factory = await ethers.getContractFactory('PreglyphRegistry');
-    const contract = await factory.deploy(owner.address);
+    const contract = await factory.deploy();
     await contract.waitForDeployment();
-    return { contract, owner, writer, other };
+    return { contract, writer, other };
   }
 
-  it('only allows the owner to approve writers', async function () {
-    const { contract, writer, other } = await deployFixture();
-
-    await expect(contract.connect(other).setWriterApproval(writer.address, true)).to.be.revertedWithCustomError(
-      contract,
-      'NotOwner',
-    );
-
-    await expect(contract.setWriterApproval(writer.address, true))
-      .to.emit(contract, 'WriterApprovalUpdated')
-      .withArgs(writer.address, true, anyValue);
-
-    expect(await contract.approvedWriters(writer.address)).to.equal(true);
-  });
-
-  it('blocks non-approved writers from writing', async function () {
+  it('stores a record for any connected writer', async function () {
     const { contract, writer } = await deployFixture();
-
-    await expect(contract.connect(writer).writeRecord('hello world')).to.be.revertedWithCustomError(
-      contract,
-      'WriterNotApproved',
-    );
-  });
-
-  it('stores a record for an approved writer', async function () {
-    const { contract, writer } = await deployFixture();
-    await contract.setWriterApproval(writer.address, true);
 
     const tx = await contract.connect(writer).writeRecord('Preglyph test record');
     await expect(tx).to.emit(contract, 'RecordWritten').withArgs(1n, writer.address, 'Preglyph test record', anyValue);
@@ -47,5 +22,24 @@ describe('PreglyphRegistry', function () {
     expect(record.author).to.equal(writer.address);
     expect(record.content).to.equal('Preglyph test record');
     expect(await contract.recordCount()).to.equal(1n);
+  });
+
+  it('stores multiple records from different writers without approval setup', async function () {
+    const { contract, writer, other } = await deployFixture();
+
+    await contract.connect(writer).writeRecord('writer one');
+    await contract.connect(other).writeRecord('writer two');
+
+    const secondRecord = await contract.getRecord(2);
+    expect(secondRecord.author).to.equal(other.address);
+    expect(secondRecord.content).to.equal('writer two');
+    expect(await contract.recordCount()).to.equal(2n);
+  });
+
+  it('still rejects empty and overlong content', async function () {
+    const { contract, writer } = await deployFixture();
+
+    await expect(contract.connect(writer).writeRecord('')).to.be.revertedWithCustomError(contract, 'EmptyContent');
+    await expect(contract.connect(writer).writeRecord('a'.repeat(281))).to.be.revertedWithCustomError(contract, 'ContentTooLong');
   });
 });
