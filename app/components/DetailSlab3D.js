@@ -34,7 +34,7 @@ function SlabMesh({ text, interacting = false, fontVersion = 0 }) {
   });
 
   return (
-    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.88}>
+    <group rotation={[0, 0, 0]} position={[0, 0, 0]} scale={0.8}>
       <mesh material={materials}>
         <boxGeometry args={[2.18, 2.18, 2.18]} />
       </mesh>
@@ -70,7 +70,7 @@ export default function DetailSlab3D({ text, fontVersion = 0 }) {
     <Canvas
       className="detail-canvas"
       dpr={[1, 1.75]}
-      camera={{ position: [0, 0, 6.4], fov: 22 }}
+      camera={{ position: [0, 0, 7.1], fov: 22 }}
       gl={{ antialias: true, alpha: true }}
       onPointerDown={beginInteraction}
       onPointerUp={endInteraction}
