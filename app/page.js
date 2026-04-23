@@ -397,9 +397,27 @@ export default function Page() {
         setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
         return;
       }
+      const permitResponse = await fetch('/api/write/permit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ author: currentAddress, content }),
+      });
+      const permitPayload = await permitResponse.json();
+      if (!permitResponse.ok || !permitPayload?.permit) {
+        throw new Error(permitPayload?.error || 'Failed to prepare Preglyph write authorization.');
+      }
+      if (!isCurrentConnectedAddress(currentAddress)) {
+        setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
+        return;
+      }
       const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
-      const tx = await contract.writeRecord(content);
+      const tx = await contract.writeRecord(
+        content,
+        BigInt(permitPayload.permit.expiresAt),
+        permitPayload.permit.nonce,
+        permitPayload.permit.signature,
+      );
       setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
       const receipt = await tx.wait();
       if (!isCurrentConnectedAddress(currentAddress)) {
