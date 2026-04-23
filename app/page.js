@@ -81,6 +81,7 @@ export default function Page() {
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
+  const [copiedTxHash, setCopiedTxHash] = useState('');
   const [fontVersion, setFontVersion] = useState(0);
   const [activePanel, setActivePanel] = useState('');
   const profileRequestIdRef = useRef(0);
@@ -343,6 +344,20 @@ export default function Page() {
 
   function handleClearRecordView() {
     setRecordView('all');
+  }
+
+  async function handleCopyTransaction(txHash) {
+    if (!txHash || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(txHash);
+      setCopiedTxHash(txHash);
+      window.setTimeout(() => {
+        setCopiedTxHash((current) => (current === txHash ? '' : current));
+      }, 1600);
+    } catch {}
   }
 
   async function handleComposeSubmit(event) {
@@ -657,12 +672,27 @@ export default function Page() {
               </div>
             </div>
             <div className="detail-tx glass-subpanel">
-              <p className="eyebrow">Transaction</p>
-              <code>{activeRecord.txHash}</code>
+              <div className="detail-section-head">
+                <p className="eyebrow">Transaction</p>
+                <button
+                  type="button"
+                  className="detail-copy-button"
+                  onClick={() => handleCopyTransaction(activeRecord.txHash)}
+                  aria-label="Copy transaction hash"
+                  title={copiedTxHash === activeRecord.txHash ? 'Copied' : 'Copy transaction'}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 9h9v9H9z" fill="none" stroke="currentColor" strokeWidth="1.8" rx="2" ry="2" />
+                    <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>{copiedTxHash === activeRecord.txHash ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              <strong className="detail-plain-value detail-tx-value">{activeRecord.txHash}</strong>
             </div>
             <div className="detail-copy glass-subpanel">
               <p className="eyebrow">Plain text</p>
-              <strong>{activeRecord.content}</strong>
+              <strong className="detail-plain-value">{activeRecord.content}</strong>
             </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
