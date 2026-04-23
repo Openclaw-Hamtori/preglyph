@@ -114,8 +114,26 @@ describe('PreglyphRegistry', function () {
     await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, signature)).to.be.revertedWithCustomError(contract, 'ExpiredWritePermit');
   });
 
-  it('still rejects empty and overlong content', async function () {
+  it('uses the 100 character product limit and still rejects empty and overlong content', async function () {
     const { contract, permitSigner, writer, chainId } = await deployFixture();
+    expect(await contract.MAX_CONTENT_LENGTH()).to.equal(100n);
+    const validContent = 'a'.repeat(100);
+    const validExpiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
+    const validNonce = ethers.randomBytes(32);
+    const validSignature = (await signPermit({
+      contract,
+      permitSigner,
+      chainId,
+      author: writer.address,
+      content: validContent,
+      expiresAt: validExpiresAt,
+      nonce: validNonce,
+    })).signature;
+
+    await expect(contract.connect(writer).writeRecord(validContent, validExpiresAt, validNonce, validSignature))
+      .to.emit(contract, 'RecordWritten')
+      .withArgs(1n, writer.address, validContent, anyValue);
+
     const emptyExpiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
     const emptyNonce = ethers.randomBytes(32);
     const emptySignature = (await signPermit({
@@ -128,7 +146,7 @@ describe('PreglyphRegistry', function () {
       nonce: emptyNonce,
     })).signature;
 
-    const longContent = 'a'.repeat(281);
+    const longContent = 'a'.repeat(101);
     const longExpiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
     const longNonce = ethers.randomBytes(32);
     const longSignature = (await signPermit({

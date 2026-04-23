@@ -7,8 +7,8 @@ import {
   clampComposeText,
 } from '../../lib/write-modal.mjs';
 
-test('write modal uses a 280 character cap', () => {
-  assert.equal(MAX_RECORD_LENGTH, 280);
+test('write modal uses a 100 character cap', () => {
+  assert.equal(MAX_RECORD_LENGTH, 100);
 });
 
 test('write modal warning explains records cannot be edited or deleted after publishing', () => {
@@ -16,7 +16,7 @@ test('write modal warning explains records cannot be edited or deleted after pub
 });
 
 test('clampComposeText trims input to the write modal cap', () => {
-  const longText = 'a'.repeat(320);
-  assert.equal(clampComposeText(longText).length, 280);
+  const longText = 'a'.repeat(140);
+  assert.equal(clampComposeText(longText).length, 100);
   assert.equal(clampComposeText('preglyph'), 'preglyph');
 });

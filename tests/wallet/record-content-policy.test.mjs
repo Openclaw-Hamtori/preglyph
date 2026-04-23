@@ -7,18 +7,18 @@ import {
   isRecordContentValid,
 } from '../../lib/record-content-policy.mjs';
 
-test('record content policy exposes the contract-aligned 280 character cap', () => {
-  assert.equal(MAX_RECORD_LENGTH, 280);
+test('record content policy exposes the contract-aligned 100 character cap', () => {
+  assert.equal(MAX_RECORD_LENGTH, 100);
 });
 
 test('record content policy rejects blank and too-long content', () => {
   assert.equal(getRecordContentValidationError(''), 'Content is required.');
   assert.equal(getRecordContentValidationError('   '), 'Content is required.');
-  assert.equal(getRecordContentValidationError('a'.repeat(281)), 'Content must be 280 characters or less.');
+  assert.equal(getRecordContentValidationError('a'.repeat(101)), 'Content must be 100 characters or less.');
 });
 
-test('record content policy accepts content up to the 280 character cap', () => {
-  assert.equal(getRecordContentValidationError('a'.repeat(280)), '');
-  assert.equal(isRecordContentValid('a'.repeat(280)), true);
-  assert.equal(isRecordContentValid('a'.repeat(281)), false);
+test('record content policy accepts content up to the 100 character cap', () => {
+  assert.equal(getRecordContentValidationError('a'.repeat(100)), '');
+  assert.equal(isRecordContentValid('a'.repeat(100)), true);
+  assert.equal(isRecordContentValid('a'.repeat(101)), false);
 });
