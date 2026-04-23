@@ -4,6 +4,7 @@ import { isAddress } from 'ethers';
 import { NextResponse } from 'next/server';
 
 import { assertContractConfigured } from '@/lib/config';
+import { verifyWritePermitAuth } from '@/lib/write-permit-auth.mjs';
 import { signWritePermit } from '@/lib/write-permit.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -12,9 +13,11 @@ const DEFAULT_TTL_SECONDS = 300;
 
 export async function POST(request) {
   try {
-    const { author, content } = await request.json();
+    const { author, content, issuedAt, authSignature } = await request.json();
     const normalizedAuthor = String(author || '').trim();
     const normalizedContent = String(content || '');
+    const normalizedIssuedAt = Number(issuedAt);
+    const normalizedAuthSignature = String(authSignature || '').trim();
 
     if (!isAddress(normalizedAuthor)) {
       return NextResponse.json({ ok: false, error: 'Valid author address is required.' }, { status: 400 });
@@ -25,6 +28,19 @@ export async function POST(request) {
     }
 
     const { contractAddress, chainId, adminPrivateKey } = assertContractConfigured();
+    const hasValidAuth = verifyWritePermitAuth({
+      author: normalizedAuthor,
+      content: normalizedContent,
+      chainId,
+      contractAddress,
+      issuedAt: normalizedIssuedAt,
+      signature: normalizedAuthSignature,
+    });
+
+    if (!hasValidAuth) {
+      return NextResponse.json({ ok: false, error: 'Wallet signature is required to authorize this write.' }, { status: 401 });
+    }
+
     if (!adminPrivateKey) {
       return NextResponse.json({ ok: false, error: 'Preglyph write signer is not configured.' }, { status: 500 });
     }

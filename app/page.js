@@ -9,6 +9,7 @@ import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner, shouldShowComposeLoadingDetail } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
+import { buildWritePermitAuthMessage } from '@/lib/write-permit-auth.mjs';
 import {
   ensureWalletOnExpectedChain,
   extractMetaMaskErrorDetail,
@@ -451,10 +452,23 @@ export default function Page() {
         setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
         return;
       }
+      const signer = await provider.getSigner();
+      const issuedAt = Math.floor(Date.now() / 1000);
+      const authSignature = await signer.signMessage(buildWritePermitAuthMessage({
+        author: currentAddress,
+        content,
+        chainId: CLIENT_CHAIN_ID,
+        contractAddress: CLIENT_CONTRACT_ADDRESS,
+        issuedAt,
+      }));
+      if (!isCurrentConnectedAddress(currentAddress)) {
+        setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
+        return;
+      }
       const permitResponse = await fetch('/api/write/permit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ author: currentAddress, content }),
+        body: JSON.stringify({ author: currentAddress, content, issuedAt, authSignature }),
       });
       const permitPayload = await permitResponse.json();
       if (!permitResponse.ok || !permitPayload?.permit) {
@@ -464,7 +478,6 @@ export default function Page() {
         setComposeState({ loading: false, message: 'Wallet session changed. Please try again.' });
         return;
       }
-      const signer = await provider.getSigner();
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
       const tx = await contract.writeRecord(
         content,
