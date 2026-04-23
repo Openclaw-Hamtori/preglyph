@@ -535,7 +535,7 @@ export default function Page() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Preglyph home">
           <span className="brand-mark" aria-hidden="true">
-            <img src="/preglyph-logo.svg" alt="" />
+            <img src="/preglyph_logo_1.png" alt="" />
           </span>
           <span className="brand-copy">
             <span className="brand-kicker">Public archive</span>
