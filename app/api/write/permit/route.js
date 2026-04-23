@@ -4,6 +4,7 @@ import { isAddress } from 'ethers';
 import { NextResponse } from 'next/server';
 
 import { assertContractConfigured } from '@/lib/config';
+import { getRecordContentValidationError } from '@/lib/record-content-policy.mjs';
 import { verifyWritePermitAuth } from '@/lib/write-permit-auth.mjs';
 import { signWritePermit } from '@/lib/write-permit.mjs';
 
@@ -23,8 +24,9 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Valid author address is required.' }, { status: 400 });
     }
 
-    if (!normalizedContent.trim()) {
-      return NextResponse.json({ ok: false, error: 'Content is required.' }, { status: 400 });
+    const contentValidationError = getRecordContentValidationError(normalizedContent);
+    if (contentValidationError) {
+      return NextResponse.json({ ok: false, error: contentValidationError }, { status: 400 });
     }
 
     const { contractAddress, chainId, adminPrivateKey } = assertContractConfigured();

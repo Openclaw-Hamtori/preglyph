@@ -685,6 +685,7 @@ export default function Page() {
                   <textarea
                     value={composeText}
                     onChange={(event) => setComposeText(clampComposeText(event.target.value))}
+                    maxLength={MAX_RECORD_LENGTH}
                     placeholder="Leave your mark on the universe…"
                   />
                   {composeState.message ? (
