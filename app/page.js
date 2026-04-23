@@ -79,6 +79,10 @@ export default function Page() {
   const [searchResults, setSearchResults] = useState(null);
   const [recordView, setRecordView] = useState('all');
   const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsAppending, setRecordsAppending] = useState(false);
+  const [recordsCursor, setRecordsCursor] = useState('');
+  const [hasMoreRecords, setHasMoreRecords] = useState(false);
+  const [totalRecordCount, setTotalRecordCount] = useState(0);
   const [composeText, setComposeText] = useState('');
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [copiedTxHash, setCopiedTxHash] = useState('');
@@ -87,6 +91,8 @@ export default function Page() {
   const profileRequestIdRef = useRef(0);
   const connectedWalletAddressRef = useRef('');
   const profileMenuShellRef = useRef(null);
+  const recordsLoadMoreRef = useRef(null);
+  const recordsAppendInFlightRef = useRef(false);
 
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
@@ -154,19 +160,45 @@ export default function Page() {
     }
   }, [chainChangeCount, connectedWalletAddress]);
 
-  async function loadRecords() {
-    setRecordsLoading(true);
+  async function loadRecords({ cursor = '', limit = 40, append = false } = {}) {
+    if (append) {
+      if (!cursor || recordsAppendInFlightRef.current) return;
+      recordsAppendInFlightRef.current = true;
+      setRecordsAppending(true);
+    } else {
+      setRecordsLoading(true);
+    }
+
     try {
-      const response = await fetch('/api/records', { cache: 'no-store' });
+      const params = new URLSearchParams();
+      if (cursor) params.set('cursor', cursor);
+      if (limit) params.set('limit', String(limit));
+      const response = await fetch(`/api/records${params.size ? `?${params.toString()}` : ''}`, { cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Failed to load records.');
-      setRecords(payload.records || []);
+      const nextRecords = payload.records || [];
+      setRecords((current) => (append ? [...current, ...nextRecords] : nextRecords));
       setNetwork(payload.network || null);
-      setSearchResults(null);
+      setRecordsCursor(payload.pageInfo?.nextCursor || '');
+      setHasMoreRecords(Boolean(payload.pageInfo?.hasMore));
+      setTotalRecordCount(Number(payload.pageInfo?.totalCount || 0));
+      if (!append) {
+        setSearchResults(null);
+      }
     } catch (error) {
-      setRecords([]);
+      if (!append) {
+        setRecords([]);
+        setRecordsCursor('');
+        setHasMoreRecords(false);
+        setTotalRecordCount(0);
+      }
     } finally {
-      setRecordsLoading(false);
+      if (append) {
+        recordsAppendInFlightRef.current = false;
+        setRecordsAppending(false);
+      } else {
+        setRecordsLoading(false);
+      }
     }
   }
 
@@ -230,6 +262,28 @@ export default function Page() {
     if (searchQuery.trim()) return;
     setSearchResults(null);
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (recordView !== 'all' || searchResults !== null || !hasMoreRecords || recordsLoading) {
+      return undefined;
+    }
+
+    const node = recordsLoadMoreRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || recordsAppendInFlightRef.current) {
+          return;
+        }
+        void loadRecords({ cursor: recordsCursor, limit: 20, append: true });
+      },
+      { rootMargin: '240px 0px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [recordView, searchResults, hasMoreRecords, recordsLoading, recordsCursor]);
 
   async function handleConnectWallet() {
     try {
@@ -526,7 +580,7 @@ export default function Page() {
 
       <div className="archive-count" aria-label="Total preglyph count">
         <span className="archive-count-label">Total Preglyphs</span>
-        <span className="archive-count-value">{records.length}</span>
+        <span className="archive-count-value">{totalRecordCount || records.length}</span>
       </div>
 
       {showComposeBanner ? (
@@ -669,6 +723,12 @@ export default function Page() {
               <p className="floating-panel-copy">Connect and write the first permanent record.</p>
             </div>
           )}
+          {recordView === 'all' && searchResults === null && hasMoreRecords ? (
+            <div ref={recordsLoadMoreRef} className="archive-load-more-trigger" aria-hidden="true" />
+          ) : null}
+          {recordView === 'all' && searchResults === null && recordsAppending ? (
+            <p className="archive-load-more-copy">Loading more Preglyphs…</p>
+          ) : null}
         </section>
       </main>
 
