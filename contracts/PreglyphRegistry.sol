@@ -5,9 +5,12 @@ contract PreglyphRegistry {
     error EmptyContent();
     error ContentTooLong();
     error InvalidPermitSigner();
+    error InvalidTreasury();
     error InvalidWritePermit();
     error ExpiredWritePermit();
     error WritePermitAlreadyUsed();
+    error IncorrectWriteFee();
+    error FeeTransferFailed();
 
     uint256 public constant MAX_CONTENT_LENGTH = 400;
 
@@ -19,27 +22,32 @@ contract PreglyphRegistry {
     }
 
     address public immutable permitSigner;
+    address public immutable treasury;
     uint256 public recordCount;
     mapping(uint256 => Record) private records;
     mapping(bytes32 => bool) private usedWritePermits;
 
     event RecordWritten(uint256 indexed recordId, address indexed author, string content, uint256 createdAt);
 
-    constructor(address signer_) {
+    constructor(address signer_, address treasury_) {
         if (signer_ == address(0)) revert InvalidPermitSigner();
+        if (treasury_ == address(0)) revert InvalidTreasury();
         permitSigner = signer_;
+        treasury = treasury_;
     }
 
     function writeRecord(
         string calldata content,
         uint256 expiresAt,
         bytes32 nonce,
+        uint256 feeWei,
         bytes calldata signature
-    ) external returns (uint256 recordId) {
+    ) external payable returns (uint256 recordId) {
         bytes memory contentBytes = bytes(content);
         if (contentBytes.length == 0) revert EmptyContent();
         if (contentBytes.length > MAX_CONTENT_LENGTH) revert ContentTooLong();
         if (block.timestamp > expiresAt) revert ExpiredWritePermit();
+        if (msg.value != feeWei) revert IncorrectWriteFee();
 
         bytes32 permitDigest = keccak256(
             abi.encodePacked(
@@ -48,7 +56,8 @@ contract PreglyphRegistry {
                 msg.sender,
                 keccak256(contentBytes),
                 expiresAt,
-                nonce
+                nonce,
+                feeWei
             )
         );
 
@@ -56,6 +65,11 @@ contract PreglyphRegistry {
         if (_recoverSigner(permitDigest, signature) != permitSigner) revert InvalidWritePermit();
 
         usedWritePermits[permitDigest] = true;
+
+        if (feeWei > 0) {
+            (bool sent,) = payable(treasury).call{value: feeWei}("");
+            if (!sent) revert FeeTransferFailed();
+        }
 
         recordId = ++recordCount;
         uint256 createdAt = block.timestamp;

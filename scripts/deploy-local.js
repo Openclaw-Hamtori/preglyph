@@ -14,9 +14,9 @@ function upsertEnvValue(content, key, value) {
 }
 
 async function main() {
-  const [deployer] = await hre.ethers.getSigners();
+  const [deployer, treasury] = await hre.ethers.getSigners();
   const factory = await hre.ethers.getContractFactory('PreglyphRegistry');
-  const contract = await factory.deploy(deployer.address);
+  const contract = await factory.deploy(deployer.address, treasury.address);
   const deploymentTx = contract.deploymentTransaction();
   const receipt = deploymentTx ? await deploymentTx.wait() : null;
   await contract.waitForDeployment();
@@ -33,6 +33,11 @@ async function main() {
   envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS', contractAddress);
   envContent = upsertEnvValue(envContent, 'PREGLYPH_DEPLOY_BLOCK', String(receipt?.blockNumber || 0));
   envContent = upsertEnvValue(envContent, 'PREGLYPH_ADMIN_PRIVATE_KEY', LOCAL_ADMIN_PRIVATE_KEY);
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_FEE_USD_CENTS', '100');
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_FEE_TREASURY_ADDRESS', treasury.address);
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_FEE_QUOTE_TTL_SECONDS', '300');
+  envContent = upsertEnvValue(envContent, 'PREGLYPH_FEE_OVERRIDE_WEI', '500000000000000');
+  envContent = upsertEnvValue(envContent, 'NEXT_PUBLIC_PREGLYPH_FEE_ENABLED', '1');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_PRESENCE_SERVICE_ID', 'noctu');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_PRESENCE_FLOW_TYPE', 'verify');
   envContent = upsertEnvValue(envContent, 'PREGLYPH_PRESENCE_ENDPOINT_REF', 'verify-proof');
@@ -42,6 +47,7 @@ async function main() {
   console.log(JSON.stringify({
     contractAddress,
     deployer: deployer.address,
+    treasury: treasury.address,
     deployBlock: receipt?.blockNumber || null,
     envPath: ENV_PATH,
   }, null, 2));

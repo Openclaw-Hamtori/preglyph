@@ -1,11 +1,10 @@
-const { readFileSync } = require('node:fs');
 const { Contract, Interface, JsonRpcProvider, NonceManager, Wallet, ethers, parseEther, randomBytes, solidityPackedKeccak256, toUtf8Bytes } = require('ethers');
 const PREGlyph_ABI = require('../lib/preglyphAbi.cjs');
 
-function buildPermitDigest({ contractAddress, chainId, author, content, expiresAt, nonce }) {
+function buildPermitDigest({ contractAddress, chainId, author, content, expiresAt, nonce, feeWei }) {
   return solidityPackedKeccak256(
-    ['address', 'uint256', 'address', 'bytes32', 'uint256', 'bytes32'],
-    [contractAddress, chainId, author, ethers.keccak256(toUtf8Bytes(content)), expiresAt, nonce],
+    ['address', 'uint256', 'address', 'bytes32', 'uint256', 'bytes32', 'uint256'],
+    [contractAddress, chainId, author, ethers.keccak256(toUtf8Bytes(content)), expiresAt, nonce, feeWei],
   );
 }
 
@@ -13,6 +12,7 @@ async function main() {
   const rpcUrl = process.env.PREGLYPH_RPC_URL;
   const contractAddress = process.env.PREGLYPH_CONTRACT_ADDRESS;
   const adminPrivateKey = process.env.PREGLYPH_ADMIN_PRIVATE_KEY;
+  const feeOverrideWei = process.env.PREGLYPH_FEE_OVERRIDE_WEI || '500000000000000';
 
   if (!rpcUrl || !contractAddress || !adminPrivateKey) {
     throw new Error('Missing local chain env. Run npm run deploy:local first.');
@@ -29,10 +29,11 @@ async function main() {
   const content = 'Preglyph local testchain write: passed humans can now leave durable public records.';
   const expiresAt = Math.floor(Date.now() / 1000) + 300;
   const nonce = `0x${Buffer.from(randomBytes(32)).toString('hex')}`;
-  const digest = buildPermitDigest({ contractAddress, chainId, author: userWallet.address, content, expiresAt, nonce });
+  const feeWei = BigInt(feeOverrideWei);
+  const digest = buildPermitDigest({ contractAddress, chainId, author: userWallet.address, content, expiresAt, nonce, feeWei });
   const signature = await adminWallet.signMessage(ethers.getBytes(digest));
 
-  const writeTx = await userContract.writeRecord(content, BigInt(expiresAt), nonce, signature);
+  const writeTx = await userContract.writeRecord(content, BigInt(expiresAt), nonce, feeWei, signature, { value: feeWei });
   const receipt = await writeTx.wait();
 
   const iface = new Interface(PREGlyph_ABI);
@@ -57,6 +58,7 @@ async function main() {
         recordId: parsed.args.recordId.toString(),
         author: parsed.args.author,
         content: parsed.args.content,
+        feeWei: feeWei.toString(),
       },
       null,
       2,

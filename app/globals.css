@@ -1103,6 +1103,12 @@ time,
   white-space: nowrap;
 }
 
+.write-fee-note {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .write-modal-actions {
   justify-content: center;
 }

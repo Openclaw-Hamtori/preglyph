@@ -1,6 +1,6 @@
 'use client';
 
-import { BrowserProvider, Contract } from 'ethers';
+import { BrowserProvider, Contract, formatEther } from 'ethers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import WriteLoadingHex3D from './components/WriteLoadingHex3D';
@@ -479,13 +479,17 @@ export default function Page() {
         return;
       }
       const contract = new Contract(CLIENT_CONTRACT_ADDRESS, PREGlyph_ABI, signer);
+      const feeWei = BigInt(permitPayload.permit.feeWei || 0);
+      const feeEth = feeWei > 0n ? formatEther(feeWei) : '0';
       const tx = await contract.writeRecord(
         content,
         BigInt(permitPayload.permit.expiresAt),
         permitPayload.permit.nonce,
+        feeWei,
         permitPayload.permit.signature,
+        { value: feeWei },
       );
-      setComposeState({ loading: true, message: `Transaction sent: ${tx.hash}` });
+      setComposeState({ loading: true, message: `Transaction sent: ${tx.hash} (${feeEth} ETH)` });
       const receipt = await tx.wait();
       if (!isCurrentConnectedAddress(currentAddress)) {
         setComposeState({ loading: false, message: 'Wallet session changed before confirmation.' });
@@ -667,6 +671,7 @@ export default function Page() {
                 <div className="write-modal-copy">
                   <p className="eyebrow">Preglyph</p>
                   <p className="eyebrow write-modal-warning">{WRITE_MODAL_WARNING}</p>
+                  <p className="floating-panel-copy write-fee-note">Each Preglyph costs about $1 in ETH.</p>
                 </div>
               </div>
               {composeState.loading ? (

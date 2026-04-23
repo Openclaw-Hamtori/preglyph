@@ -2,8 +2,9 @@ const hre = require('hardhat');
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
+  const treasuryAddress = process.env.PREGLYPH_FEE_TREASURY_ADDRESS || deployer.address;
   const factory = await hre.ethers.getContractFactory('PreglyphRegistry');
-  const contract = await factory.deploy(deployer.address);
+  const contract = await factory.deploy(deployer.address, treasuryAddress);
   const deploymentTx = contract.deploymentTransaction();
   const receipt = deploymentTx ? await deploymentTx.wait() : null;
   await contract.waitForDeployment();
