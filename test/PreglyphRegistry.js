@@ -114,10 +114,11 @@ describe('PreglyphRegistry', function () {
     await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, signature)).to.be.revertedWithCustomError(contract, 'ExpiredWritePermit');
   });
 
-  it('uses the 100 character product limit and still rejects empty and overlong content', async function () {
+  it('uses a byte cap that still allows 100 Korean characters while rejecting oversized payloads', async function () {
     const { contract, permitSigner, writer, chainId } = await deployFixture();
-    expect(await contract.MAX_CONTENT_LENGTH()).to.equal(100n);
-    const validContent = 'a'.repeat(100);
+    expect(await contract.MAX_CONTENT_LENGTH()).to.equal(400n);
+
+    const validContent = '가'.repeat(100);
     const validExpiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
     const validNonce = ethers.randomBytes(32);
     const validSignature = (await signPermit({
@@ -146,7 +147,7 @@ describe('PreglyphRegistry', function () {
       nonce: emptyNonce,
     })).signature;
 
-    const longContent = 'a'.repeat(101);
+    const longContent = '가'.repeat(134);
     const longExpiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
     const longNonce = ethers.randomBytes(32);
     const longSignature = (await signPermit({

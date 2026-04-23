@@ -9,7 +9,7 @@ contract PreglyphRegistry {
     error ExpiredWritePermit();
     error WritePermitAlreadyUsed();
 
-    uint256 public constant MAX_CONTENT_LENGTH = 100;
+    uint256 public constant MAX_CONTENT_LENGTH = 400;
 
     struct Record {
         uint256 id;
