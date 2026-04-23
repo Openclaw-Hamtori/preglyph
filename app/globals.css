@@ -122,21 +122,17 @@ button {
   background: linear-gradient(145deg, rgba(108, 126, 152, 0.92), rgba(58, 74, 96, 0.96));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 0 rgba(17, 23, 31, 0.28);
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.brand-mark::before,
-.brand-mark::after {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(241, 245, 249, 0.38);
-  border-radius: 8px;
-}
-
-.brand-mark::after {
-  inset: 14px 10px 10px 14px;
-  border-left: 0;
-  border-top: 0;
+.brand-mark img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.08));
 }
 
 .brand-copy {
