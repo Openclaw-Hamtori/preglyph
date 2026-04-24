@@ -17,6 +17,7 @@ import {
   extractMetaMaskErrorDetail,
   openMetaMaskInstall,
 } from '@/lib/wallet/metamask-connector.mjs';
+import { handleMetaMaskConnectFailure, shouldOpenMetaMaskMobileConnect } from '@/lib/wallet/connect-guidance.mjs';
 import { useMetaMaskSession } from '@/lib/wallet/useMetaMaskSession';
 import { getPublicRuntimeConfig } from '@/lib/config';
 
@@ -332,19 +333,16 @@ export default function Page() {
   }, [recordView, connectedWalletAddress, profileHasMoreRecords, profileRecordsCursor]);
 
   async function handleConnectWallet() {
+    if (typeof window !== 'undefined' && shouldOpenMetaMaskMobileConnect({ windowObject: window })) {
+      openMetaMaskInstall({ windowObject: window });
+      return '';
+    }
+
     try {
       const nextAddress = await connectWalletSession();
       connectedWalletAddressRef.current = nextAddress;
       return nextAddress;
     } catch (error) {
-      if (error?.code === 'NO_PROVIDER') {
-        openMetaMaskInstall();
-        if (typeof window !== 'undefined') {
-          window.alert('MetaMask is required to continue.');
-        }
-        return '';
-      }
-
       const connectErrorDetail = extractMetaMaskErrorDetail(error);
       if (typeof window !== 'undefined') {
         console.error('MetaMask connect failed', {
@@ -354,6 +352,10 @@ export default function Page() {
           rawData: error?.data,
           error,
         });
+
+        if (handleMetaMaskConnectFailure({ errorCode: error?.code, windowObject: window, openMetaMaskInstallImpl: openMetaMaskInstall })) {
+          return '';
+        }
 
         if (error?.code === 4001) {
           return '';
