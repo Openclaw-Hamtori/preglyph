@@ -1263,6 +1263,51 @@ time,
     flex-direction: column;
   }
 
+  .detail-head {
+    gap: 14px;
+  }
+
+  .detail-author-block .eyebrow,
+  .detail-time-block .eyebrow,
+  .detail-section-head .eyebrow,
+  .detail-copy .eyebrow {
+    margin-bottom: 8px;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+  }
+
+  .detail-author-block strong,
+  .detail-time-block span,
+  .detail-plain-value {
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .detail-tx-value {
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .detail-copy-button {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 0.68rem;
+  }
+
+  .detail-copy-button svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .detail-tx,
+  .detail-copy {
+    padding: 14px 15px;
+  }
+
+  .detail-3d-stage {
+    margin-top: 2px;
+  }
+
   .monolith-wrap {
     width: min(100%, 240px);
     min-height: 190px;
