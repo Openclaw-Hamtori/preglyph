@@ -1204,8 +1204,21 @@ time,
 
   .topbar {
     position: static;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
     border-radius: 24px;
     padding: 16px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 0;
+  }
+
+  .brand-copy {
+    display: none;
   }
 
   .archive-count {
@@ -1218,8 +1231,6 @@ time,
   }
 
   .nav,
-  .nav-actions,
-  .search-shell,
   .floating-panel-head,
   .section-row,
   .compose-footer,
@@ -1228,12 +1239,47 @@ time,
     align-items: stretch;
   }
 
+  .search-shell {
+    grid-column: 2;
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-field {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+
+  .search-field input {
+    font-size: 0.88rem;
+  }
+
+  .ghost-chip.icon-chip {
+    width: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
   .nav {
     gap: 14px;
     font-size: 0.88rem;
   }
 
+  .nav-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .profile-menu-shell {
+    width: 100%;
+  }
+
+  .connect-chip {
     width: 100%;
   }
 
