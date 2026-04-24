@@ -808,9 +808,6 @@ export default function Page() {
         <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Record detail">
           <div className="detail-dim" onClick={() => setActiveRecord(null)} />
           <div className="detail-panel glass-panel">
-            <button type="button" className="detail-close" onClick={() => setActiveRecord(null)}>
-              Close
-            </button>
             <div className="detail-head simple-head">
               <div className="detail-author-block">
                 <p className="eyebrow">Recorded by</p>
