@@ -1243,9 +1243,13 @@ time,
     margin-top: 10px;
   }
 
-  .profile-grid,
-  .slab-grid {
+  .profile-grid {
     grid-template-columns: 1fr;
+  }
+
+  .slab-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .monolith-wrap,
