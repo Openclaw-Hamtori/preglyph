@@ -9,6 +9,8 @@ import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner, shouldShowComposeLoadingDetail } from '@/lib/compose-state.mjs';
 import { clampComposeText, MAX_RECORD_LENGTH, WRITE_MODAL_WARNING, WRITE_PREVIEW_SIZE } from '@/lib/write-modal.mjs';
+import { getWriteFeeNotice } from '@/lib/write-fee-copy.mjs';
+import { buildProfileRequestPath, mergeProfilePage } from '@/lib/profile-pagination-ui.mjs';
 import { buildWritePermitAuthMessage } from '@/lib/write-permit-auth.mjs';
 import {
   ensureWalletOnExpectedChain,
@@ -16,12 +18,15 @@ import {
   openMetaMaskInstall,
 } from '@/lib/wallet/metamask-connector.mjs';
 import { useMetaMaskSession } from '@/lib/wallet/useMetaMaskSession';
+import { getPublicRuntimeConfig } from '@/lib/config';
 
+const PUBLIC_RUNTIME_CONFIG = getPublicRuntimeConfig();
 const CLIENT_CHAIN_ID = Number(process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_ID || 31337);
 const CLIENT_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_PREGLYPH_CONTRACT_ADDRESS || '';
 const CLIENT_RPC_URL = process.env.NEXT_PUBLIC_PREGLYPH_RPC_HTTP_URL || 'http://127.0.0.1:8545';
 const CLIENT_CHAIN_NAME = process.env.NEXT_PUBLIC_PREGLYPH_CHAIN_NAME || 'Preglyph Testchain';
 const CLIENT_CURRENCY_SYMBOL = process.env.NEXT_PUBLIC_PREGLYPH_CURRENCY_SYMBOL || 'ETH';
+const CLIENT_WRITE_FEE_NOTICE = getWriteFeeNotice(PUBLIC_RUNTIME_CONFIG.feeDisplayUsd);
 
 function truncateAddress(address) {
   if (!address) return '';
@@ -64,6 +69,7 @@ export default function Page() {
   const [network, setNetwork] = useState(null);
   const [activeRecord, setActiveRecord] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [profileAppending, setProfileAppending] = useState(false);
   const {
     walletAddress,
     connectedWalletAddress,
@@ -93,11 +99,15 @@ export default function Page() {
   const connectedWalletAddressRef = useRef('');
   const profileMenuShellRef = useRef(null);
   const recordsLoadMoreRef = useRef(null);
+  const profileLoadMoreRef = useRef(null);
   const recordsAppendInFlightRef = useRef(false);
+  const profileAppendInFlightRef = useRef(false);
 
   const activeProfile = connectionStatus === 'connected' && walletProbeDone ? profile : null;
   const isWalletConnected = connectionStatus === 'connected' && walletProbeDone;
   const profileRecords = activeProfile?.records || [];
+  const profileHasMoreRecords = Boolean(activeProfile?.pageInfo?.hasMore);
+  const profileRecordsCursor = activeProfile?.pageInfo?.nextCursor || '';
   const displayedRecords = recordView === 'mine' ? profileRecords : (searchResults === null ? records : searchResults);
   const showComposeBanner = shouldShowComposeBanner(composeState);
   const showArchiveLoading = shouldShowArchiveLoading({
@@ -203,24 +213,37 @@ export default function Page() {
     }
   }
 
-  async function loadProfile(address) {
+  async function loadProfile(address, { cursor = '', limit = 40, append = false } = {}) {
     if (!address) {
       profileRequestIdRef.current += 1;
       setProfile(null);
       return;
     }
 
-    const requestId = ++profileRequestIdRef.current;
+    if (append) {
+      if (!cursor || profileAppendInFlightRef.current) return;
+      profileAppendInFlightRef.current = true;
+      setProfileAppending(true);
+    }
+
+    const requestId = append ? profileRequestIdRef.current : ++profileRequestIdRef.current;
 
     try {
-      const response = await fetch(`/api/profile/${address}`, { cache: 'no-store' });
+      const response = await fetch(buildProfileRequestPath(address, { cursor, limit }), { cache: 'no-store' });
       const payload = await response.json();
       if (requestId !== profileRequestIdRef.current) return;
       if (!response.ok) throw new Error(payload.error || 'Failed to load profile.');
-      setProfile(payload.profile);
+      setProfile((current) => mergeProfilePage(current, payload.profile, { append }));
     } catch (error) {
       if (requestId !== profileRequestIdRef.current) return;
-      setProfile(null);
+      if (!append) {
+        setProfile(null);
+      }
+    } finally {
+      if (append) {
+        profileAppendInFlightRef.current = false;
+        setProfileAppending(false);
+      }
     }
   }
 
@@ -285,6 +308,28 @@ export default function Page() {
     observer.observe(node);
     return () => observer.disconnect();
   }, [recordView, searchResults, hasMoreRecords, recordsLoading, recordsCursor]);
+
+  useEffect(() => {
+    if (recordView !== 'mine' || !connectedWalletAddress || !profileHasMoreRecords) {
+      return undefined;
+    }
+
+    const node = profileLoadMoreRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || profileAppendInFlightRef.current) {
+          return;
+        }
+        void loadProfile(connectedWalletAddress, { cursor: profileRecordsCursor, limit: 20, append: true });
+      },
+      { rootMargin: '240px 0px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [recordView, connectedWalletAddress, profileHasMoreRecords, profileRecordsCursor]);
 
   async function handleConnectWallet() {
     try {
@@ -581,7 +626,7 @@ export default function Page() {
                   </button>
                   <button type="button" className="profile-menu-item" onClick={handleShowMyPreglyph}>
                     <span>My Preglyph</span>
-                    <strong>{profileRecords.length}</strong>
+                    <strong>{profileHasMoreRecords ? `${profileRecords.length}+` : profileRecords.length}</strong>
                   </button>
                   <button type="button" className="profile-menu-item danger" onClick={handleDisconnectWallet}>
                     <strong>Disconnect</strong>
@@ -655,7 +700,7 @@ export default function Page() {
           <section className="glass-panel status-banner status-banner-row" aria-live="polite">
             <div className="status-banner-copy">
               <strong>My Preglyph</strong>
-              <span>{profileRecords.length} records</span>
+              <span>{profileHasMoreRecords ? `${profileRecords.length}+ records` : `${profileRecords.length} records`}</span>
             </div>
             <button type="button" className="ghost-chip icon-chip" onClick={handleClearRecordView} aria-label="Show all records">
               ×
@@ -671,7 +716,7 @@ export default function Page() {
                 <div className="write-modal-copy">
                   <p className="eyebrow">Preglyph</p>
                   <p className="eyebrow write-modal-warning">{WRITE_MODAL_WARNING}</p>
-                  <p className="floating-panel-copy write-fee-note">Each Preglyph costs about $1 in ETH.</p>
+                  <p className="floating-panel-copy write-fee-note">{CLIENT_WRITE_FEE_NOTICE}</p>
                 </div>
               </div>
               {composeState.loading ? (
@@ -747,8 +792,14 @@ export default function Page() {
           {recordView === 'all' && searchResults === null && hasMoreRecords ? (
             <div ref={recordsLoadMoreRef} className="archive-load-more-trigger" aria-hidden="true" />
           ) : null}
+          {recordView === 'mine' && profileHasMoreRecords ? (
+            <div ref={profileLoadMoreRef} className="archive-load-more-trigger" aria-hidden="true" />
+          ) : null}
           {recordView === 'all' && searchResults === null && recordsAppending ? (
             <p className="archive-load-more-copy">Loading more Preglyphs…</p>
+          ) : null}
+          {recordView === 'mine' && profileAppending ? (
+            <p className="archive-load-more-copy">Loading more of your Preglyphs…</p>
           ) : null}
         </section>
       </main>

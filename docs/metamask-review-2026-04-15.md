@@ -113,18 +113,14 @@ Mobile often worked while desktop failed because:
 
 ## Claude full-code review findings (high priority)
 
-### P0: current codebase has a larger security/product problem than wallet UX
+### P0: historical note from the old approve-flow era
 
-Claude found that the write gate is effectively bypassed by a public approval route:
+This finding referred to an older runtime path that used a public approval route. The current permit-based write flow no longer relies on `/api/writers/approve` and that route has since been removed.
 
-- `app/page.js` calls `/api/writers/approve`
-- server route directly approves any supplied address onchain
-- Presence verification code exists, but is not the true runtime gate
+Historical meaning at the time:
 
-Meaning:
-
-- current product promise (“Presence-gated writing”) is not actually enforced by the shipped runtime path
-- this must be treated as a priority architectural issue
+- the product promise (“Presence-gated writing”) was not actually enforced by the shipped runtime path
+- this had to be treated as a priority architectural issue
 
 ### Other major review findings
 

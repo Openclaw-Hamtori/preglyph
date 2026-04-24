@@ -1,34 +1,65 @@
 import { randomBytes } from 'node:crypto';
 
-import { Contract, isAddress, JsonRpcProvider } from 'ethers';
+import { Contract, isAddress } from 'ethers';
 import { NextResponse } from 'next/server';
 
 import { assertContractConfigured } from '@/lib/config';
 import { getWriteFeeQuote } from '@/lib/eth-usd-quote.mjs';
+import { getRateLimitKeyFromHeaders, createMemoryRateLimiter } from '@/lib/rate-limit.mjs';
+import { getSharedRpcProvider } from '@/lib/rpc-provider.mjs';
 import { getRecordContentValidationError } from '@/lib/record-content-policy.mjs';
 import { verifyWritePermitAuth } from '@/lib/write-permit-auth.mjs';
-import { signWritePermit } from '@/lib/write-permit.mjs';
+import { assertPermitSignerMatchesConfiguredAddress, signWritePermit } from '@/lib/write-permit.mjs';
 
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_TTL_SECONDS = 300;
-const PREGLYPH_TREASURY_ABI = ['function treasury() view returns (address)'];
+const PERMIT_RATE_LIMIT_WINDOW_MS = 60_000;
+const PERMIT_RATE_LIMIT_MAX_REQUESTS = 10;
+const permitRateLimiter = createMemoryRateLimiter({
+  windowMs: PERMIT_RATE_LIMIT_WINDOW_MS,
+  limit: PERMIT_RATE_LIMIT_MAX_REQUESTS,
+});
+const PREGLYPH_REGISTRY_GUARD_ABI = [
+  'function treasury() view returns (address)',
+  'function permitSigner() view returns (address)',
+];
 
-async function assertTreasuryMatchesContract({ rpcUrl, contractAddress, expectedTreasuryAddress }) {
-  const provider = new JsonRpcProvider(rpcUrl);
-  try {
-    const contract = new Contract(contractAddress, PREGLYPH_TREASURY_ABI, provider);
-    const actualTreasuryAddress = String(await contract.treasury()).toLowerCase();
-    if (actualTreasuryAddress !== String(expectedTreasuryAddress).toLowerCase()) {
-      throw new Error('Configured fee treasury does not match the deployed contract treasury.');
-    }
-  } finally {
-    provider.destroy?.();
+async function assertContractWriteGuards({ rpcUrl, contractAddress, expectedTreasuryAddress, signerPrivateKey }) {
+  const provider = getSharedRpcProvider(rpcUrl);
+  const contract = new Contract(contractAddress, PREGLYPH_REGISTRY_GUARD_ABI, provider);
+  const [actualTreasuryAddress, actualPermitSignerAddress] = await Promise.all([
+    contract.treasury(),
+    contract.permitSigner(),
+  ]);
+
+  if (String(actualTreasuryAddress).toLowerCase() !== String(expectedTreasuryAddress).toLowerCase()) {
+    throw new Error('Configured fee treasury does not match the deployed contract treasury.');
   }
+
+  assertPermitSignerMatchesConfiguredAddress({
+    signerPrivateKey,
+    expectedSignerAddress: actualPermitSignerAddress,
+  });
 }
 
 export async function POST(request) {
   try {
+    const rateLimit = permitRateLimiter.consume({
+      key: getRateLimitKeyFromHeaders(request.headers),
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many permit requests. Try again shortly.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+          },
+        },
+      );
+    }
+
     const { author, content, issuedAt, authSignature } = await request.json();
     const normalizedAuthor = String(author || '').trim();
     const normalizedContent = String(content || '');
@@ -82,12 +113,14 @@ export async function POST(request) {
       usdCents: feeUsdCents,
       overrideWei: feeOverrideWei,
       feedAddress: chainlinkEthUsdFeed,
+      chainId,
       maxAgeSeconds: feeQuoteTtlSeconds || DEFAULT_TTL_SECONDS,
     });
-    await assertTreasuryMatchesContract({
+    await assertContractWriteGuards({
       rpcUrl,
       contractAddress,
       expectedTreasuryAddress: feeTreasuryAddress,
+      signerPrivateKey: adminPrivateKey,
     });
     const expiresAt = Math.floor(Date.now() / 1000) + (feeQuoteTtlSeconds || DEFAULT_TTL_SECONDS);
     const nonce = `0x${randomBytes(32).toString('hex')}`;

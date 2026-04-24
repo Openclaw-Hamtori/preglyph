@@ -221,4 +221,48 @@ describe('PreglyphRegistry', function () {
     await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, submittedFeeWei, signature, { value: submittedFeeWei }))
       .to.be.revertedWithCustomError(contract, 'InvalidWritePermit');
   });
+
+  it('allows the owner to rotate the permit signer', async function () {
+    const { contract, treasury, other } = await deployFixture();
+
+    await contract.connect(treasury).setPermitSigner(other.address);
+
+    expect(await contract.owner()).to.equal(treasury.address);
+    expect(await contract.permitSigner()).to.equal(other.address);
+  });
+
+  it('allows the owner to rotate the treasury', async function () {
+    const { contract, treasury, other } = await deployFixture();
+
+    await contract.connect(treasury).setTreasury(other.address);
+
+    expect(await contract.treasury()).to.equal(other.address);
+  });
+
+  it('allows the owner to transfer ownership', async function () {
+    const { contract, other, treasury } = await deployFixture();
+
+    await contract.connect(treasury).transferOwnership(other.address);
+
+    expect(await contract.owner()).to.equal(other.address);
+    expect(await contract.treasury()).to.equal(treasury.address);
+  });
+
+  it('rejects non-owner signer or treasury rotations and zero-address updates', async function () {
+    const { contract, permitSigner, other, writer, treasury } = await deployFixture();
+
+    await expect(contract.connect(writer).setPermitSigner(other.address))
+      .to.be.revertedWithCustomError(contract, 'NotOwner');
+    await expect(contract.connect(writer).setTreasury(other.address))
+      .to.be.revertedWithCustomError(contract, 'NotOwner');
+    await expect(contract.connect(writer).transferOwnership(other.address))
+      .to.be.revertedWithCustomError(contract, 'NotOwner');
+    await expect(contract.connect(treasury).setPermitSigner(ethers.ZeroAddress))
+      .to.be.revertedWithCustomError(contract, 'InvalidPermitSigner');
+    await expect(contract.connect(treasury).setTreasury(ethers.ZeroAddress))
+      .to.be.revertedWithCustomError(contract, 'InvalidTreasury');
+    await expect(contract.connect(treasury).transferOwnership(ethers.ZeroAddress))
+      .to.be.revertedWithCustomError(contract, 'InvalidOwner');
+    expect(await contract.permitSigner()).to.equal(permitSigner.address);
+  });
 });

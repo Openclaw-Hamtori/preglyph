@@ -11,6 +11,8 @@
     "test:contracts": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy-local.js --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy-sepolia.js --network sepolia",
+    "deploy:base": "hardhat run scripts/deploy-base.js --network base",
+    "deploy:mainnet": "hardhat run scripts/deploy-mainnet.js --network mainnet",
     "test:e2e:local": "node scripts/test-local-e2e.js",
     "test:unit": "node --test tests/wallet/*.test.mjs"
   },

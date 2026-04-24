@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  BASE_CHAINLINK_ETH_USD_FEED,
   DEFAULT_CHAINLINK_ETH_USD_FEED,
   DEFAULT_FEE_QUOTE_TTL_SECONDS,
   assertChainlinkPriceFresh,
@@ -26,6 +27,14 @@ test('convertUsdCentsToWei rounds up so the quote never undercharges', () => {
 
 test('resolveChainlinkFeedAddress falls back to the canonical mainnet feed when config is blank', () => {
   assert.equal(resolveChainlinkFeedAddress(''), DEFAULT_CHAINLINK_ETH_USD_FEED);
+});
+
+test('resolveChainlinkFeedAddress returns the Sepolia feed when chainId is 11155111 and config is blank', () => {
+  assert.equal(resolveChainlinkFeedAddress('', 11155111), '0x694AA1769357215DE4FAC081bf1f309aDC325306');
+});
+
+test('resolveChainlinkFeedAddress returns the Base feed when chainId is 8453 and config is blank', () => {
+  assert.equal(resolveChainlinkFeedAddress('', 8453), BASE_CHAINLINK_ETH_USD_FEED);
 });
 
 test('assertChainlinkPriceFresh rejects stale Chainlink rounds', () => {

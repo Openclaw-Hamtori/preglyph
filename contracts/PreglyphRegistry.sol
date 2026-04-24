@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 contract PreglyphRegistry {
+    error NotOwner();
+    error InvalidOwner();
     error EmptyContent();
     error ContentTooLong();
     error InvalidPermitSigner();
@@ -21,19 +23,41 @@ contract PreglyphRegistry {
         uint256 createdAt;
     }
 
-    address public immutable permitSigner;
-    address public immutable treasury;
+    address public owner;
+    address public permitSigner;
+    address public treasury;
     uint256 public recordCount;
     mapping(uint256 => Record) private records;
     mapping(bytes32 => bool) private usedWritePermits;
 
     event RecordWritten(uint256 indexed recordId, address indexed author, string content, uint256 createdAt);
 
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
     constructor(address signer_, address treasury_) {
         if (signer_ == address(0)) revert InvalidPermitSigner();
         if (treasury_ == address(0)) revert InvalidTreasury();
+        owner = treasury_;
         permitSigner = signer_;
         treasury = treasury_;
+    }
+
+    function setPermitSigner(address signer_) external onlyOwner {
+        if (signer_ == address(0)) revert InvalidPermitSigner();
+        permitSigner = signer_;
+    }
+
+    function setTreasury(address treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert InvalidTreasury();
+        treasury = treasury_;
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert InvalidOwner();
+        owner = newOwner;
     }
 
     function writeRecord(
