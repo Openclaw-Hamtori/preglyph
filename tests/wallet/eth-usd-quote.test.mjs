@@ -8,6 +8,7 @@ import {
   assertChainlinkPriceFresh,
   assertChainlinkRoundComplete,
   convertUsdCentsToWei,
+  isChainlinkPriceStaleError,
   parseChainlinkAnswerToPrice,
   resolveChainlinkFeedAddress,
 } from '../../lib/eth-usd-quote.mjs';
@@ -42,6 +43,11 @@ test('assertChainlinkPriceFresh rejects stale Chainlink rounds', () => {
     () => assertChainlinkPriceFresh({ updatedAt: 100, now: 1000, maxAgeSeconds: 300 }),
     /stale/i,
   );
+});
+
+test('isChainlinkPriceStaleError recognizes the canonical stale error', () => {
+  assert.equal(isChainlinkPriceStaleError(new Error('Chainlink ETH/USD feed is stale.')), true);
+  assert.equal(isChainlinkPriceStaleError(new Error('something else')), false);
 });
 
 test('assertChainlinkRoundComplete rejects incomplete Chainlink rounds', () => {

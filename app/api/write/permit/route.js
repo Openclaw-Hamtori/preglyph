@@ -4,7 +4,7 @@ import { Contract, isAddress } from 'ethers';
 import { NextResponse } from 'next/server';
 
 import { assertContractConfigured } from '@/lib/config';
-import { getWriteFeeQuote } from '@/lib/eth-usd-quote.mjs';
+import { resolvePermitFeeQuote } from '@/lib/permit-fee-quote.mjs';
 import { getRateLimitKeyFromHeaders, createMemoryRateLimiter } from '@/lib/rate-limit.mjs';
 import { getSharedRpcProvider } from '@/lib/rpc-provider.mjs';
 import { getRecordContentValidationError } from '@/lib/record-content-policy.mjs';
@@ -108,7 +108,7 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Preglyph fee configuration is incomplete.' }, { status: 500 });
     }
 
-    const feeQuote = await getWriteFeeQuote({
+    const feeQuote = await resolvePermitFeeQuote({
       rpcUrl,
       usdCents: feeUsdCents,
       overrideWei: feeOverrideWei,
