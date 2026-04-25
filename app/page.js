@@ -43,10 +43,10 @@ function SearchIcon() {
   );
 }
 
-function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', fontVersion = 0 }) {
-  const textureUrl = useMemo(() => createInscriptionDataUrl(text, size), [text, size, fontVersion]);
-  const hoverFillTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'hover-fill'), [text, size, fontVersion]);
-  const glowTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'glow'), [text, size, fontVersion]);
+function Inscription({ text, size = MATRIX_SIZE, variant = 'preview', inscriptionMode = HORIZONTAL_INSCRIPTION_MODE, fontVersion = 0 }) {
+  const textureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'base', inscriptionMode), [text, size, inscriptionMode, fontVersion]);
+  const hoverFillTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'hover-fill', inscriptionMode), [text, size, inscriptionMode, fontVersion]);
+  const glowTextureUrl = useMemo(() => createInscriptionDataUrl(text, size, 'glow', inscriptionMode), [text, size, inscriptionMode, fontVersion]);
 
   return (
     <span className={`inscription-shell ${variant}`}>
@@ -739,33 +739,18 @@ export default function Page() {
                 <form className="compose-form write-modal-form" onSubmit={handleComposeSubmit}>
                   <div className="write-preview-block">
                     <div className="write-preview-shell glass-subpanel">
-                      <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
+                      <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" inscriptionMode={composeInscriptionMode} fontVersion={fontVersion} />
                     </div>
                   </div>
-                  <div className="write-mode-picker glass-subpanel" aria-label="3D cube inscription layout">
-                    <div className="write-mode-copy">
-                      <p className="eyebrow">3D cube layout</p>
-                      <span>Plain text stays horizontal. Only the 3D cube render changes.</span>
-                    </div>
-                    <div className="write-mode-options" role="radiogroup" aria-label="3D cube layout options">
-                      <button
-                        type="button"
-                        className={`write-mode-option ${composeInscriptionMode === HORIZONTAL_INSCRIPTION_MODE ? 'active' : ''}`}
-                        aria-pressed={composeInscriptionMode === HORIZONTAL_INSCRIPTION_MODE}
-                        onClick={() => setComposeInscriptionMode(HORIZONTAL_INSCRIPTION_MODE)}
-                      >
-                        Horizontal
-                      </button>
-                      <button
-                        type="button"
-                        className={`write-mode-option ${composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE ? 'active' : ''}`}
-                        aria-pressed={composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE}
-                        onClick={() => setComposeInscriptionMode(UJONGSEO_INSCRIPTION_MODE)}
-                      >
-                        Ujongseo
-                      </button>
-                    </div>
-                  </div>
+                  <label className="write-mode-check" aria-label="Toggle ujongseo 3D cube layout">
+                    <input
+                      type="checkbox"
+                      checked={composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE}
+                      onChange={(event) => setComposeInscriptionMode(event.target.checked ? UJONGSEO_INSCRIPTION_MODE : HORIZONTAL_INSCRIPTION_MODE)}
+                    />
+                    <span className="write-mode-box" aria-hidden="true" />
+                    <span className="write-mode-label">Ujongseo for 3D cube</span>
+                  </label>
                   <textarea
                     value={composeText}
                     onChange={(event) => setComposeText(clampComposeText(event.target.value))}
