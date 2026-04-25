@@ -717,7 +717,7 @@ export default function Page() {
         ) : null}
 
         {activePanel === 'write' && isWalletConnected ? (
-          <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
+          <div className="detail-backdrop write-backdrop" role="dialog" aria-modal="true" aria-label="Write record">
             <div className="detail-dim" onClick={handleCloseWriteFlow} />
             <div className="detail-panel glass-panel write-modal">
               <div className="floating-panel-head write-modal-head">

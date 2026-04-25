@@ -1021,8 +1021,16 @@ time,
   width: min(720px, 100%);
 }
 
+.write-backdrop {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .write-modal {
   position: relative;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .write-modal-head {
@@ -1329,6 +1337,46 @@ time,
 
   .profile-grid {
     grid-template-columns: 1fr;
+  }
+
+  .write-backdrop {
+    align-items: start;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .write-modal {
+    width: 100%;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    border-radius: 24px;
+  }
+
+  .write-modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: -18px -18px 0;
+    padding: 18px 18px 12px;
+    background: rgba(10, 18, 30, 0.94);
+  }
+
+  .write-modal-form {
+    margin-top: 14px;
+  }
+
+  .write-preview-block {
+    margin-block: 4px 14px;
+  }
+
+  .write-preview-shell {
+    width: min(100%, 320px);
+  }
+
+  .write-mode-check {
+    margin-top: 0;
+  }
+
+  .compose-form textarea {
+    min-height: 112px;
   }
 
   .slab-grid {
