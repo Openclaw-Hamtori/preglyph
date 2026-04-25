@@ -784,7 +784,7 @@ export default function Page() {
                 onClick={() => setActiveRecord(record)}
                 aria-label={`Open record by ${record.author}`}
               >
-                <Inscription text={record.content} size={MATRIX_SIZE} variant="preview" fontVersion={fontVersion} />
+                <Inscription text={record.content} size={MATRIX_SIZE} variant="preview" inscriptionMode={record.inscriptionMode} fontVersion={fontVersion} />
               </button>
             ))
           ) : searchQuery.trim() ? (
