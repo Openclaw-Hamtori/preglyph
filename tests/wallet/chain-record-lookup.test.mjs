@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Interface } from 'ethers';
 
 import PREGlyph_ABI from '../../lib/preglyphAbi.cjs';
-import { pickAllowedRecordFromLogs } from '../../lib/record-log-filter.mjs';
+import { normalizeRecordEntries, pickAllowedRecordFromLogs } from '../../lib/record-log-filter.mjs';
 
 const recordInterface = new Interface(PREGlyph_ABI);
 
@@ -75,6 +75,49 @@ test('pickAllowedRecordFromLogs preserves ujongseo render mode from RecordWritte
 
   assert.equal(record?.content, 'vertical record');
   assert.equal(record?.inscriptionMode, 'ujongseo');
+});
+
+test('pickAllowedRecordFromLogs prefers RecordWrittenV2 over legacy RecordWritten from the same tx', () => {
+  const allowedContract = '0x3321077b39Bb1fBD1f9f342804af32BbF6B3b0fe';
+  const txHash = '0x' + 'aa'.repeat(32);
+  const record = pickAllowedRecordFromLogs({
+    logs: [
+      makeRecordLog({ contractAddress: allowedContract, txHash, recordId: 7, content: 'same tx', logIndex: 1 }),
+      makeRecordLog({ contractAddress: allowedContract, txHash, recordId: 7, content: 'same tx', inscriptionMode: 1, logIndex: 2 }),
+    ],
+    allowedContracts: [{ address: allowedContract, deployBlock: 0 }],
+    recordInterface,
+  });
+
+  assert.equal(record?.inscriptionMode, 'ujongseo');
+  assert.equal(record?.logIndex, 2);
+});
+
+test('normalizeRecordEntries collapses duplicate legacy and v2 records from the same tx', () => {
+  const normalized = normalizeRecordEntries([
+    {
+      id: 1,
+      txHash: '0x' + '11'.repeat(32),
+      contractAddress: '0x3321077b39Bb1fBD1f9f342804af32BbF6B3b0fe',
+      inscriptionMode: 'horizontal',
+      blockNumber: 10,
+      logIndex: 1,
+      content: 'same',
+    },
+    {
+      id: 1,
+      txHash: '0x' + '11'.repeat(32),
+      contractAddress: '0x3321077b39Bb1fBD1f9f342804af32BbF6B3b0fe',
+      inscriptionMode: 'ujongseo',
+      blockNumber: 10,
+      logIndex: 2,
+      content: 'same',
+    },
+  ]);
+
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0]?.inscriptionMode, 'ujongseo');
+  assert.equal(normalized[0]?.logIndex, 2);
 });
 
 test('pickAllowedRecordFromLogs returns null when every matching event comes from foreign contracts', () => {

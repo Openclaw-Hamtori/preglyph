@@ -1150,10 +1150,6 @@ time,
   color: var(--muted);
 }
 
-.detail-render-mode {
-  margin-top: 16px;
-}
-
 .write-gate-stack {
   display: grid;
   gap: 16px;

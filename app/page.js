@@ -858,10 +858,6 @@ export default function Page() {
               <p className="eyebrow">Plain text</p>
               <strong className="detail-plain-value">{activeRecord.content}</strong>
             </div>
-            <div className="detail-copy glass-subpanel detail-render-mode">
-              <p className="eyebrow">3D cube layout</p>
-              <strong className="detail-plain-value">{activeRecord.inscriptionMode === UJONGSEO_INSCRIPTION_MODE ? 'Ujongseo' : 'Horizontal'}</strong>
-            </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
                 <DetailSlab3D text={activeRecord.content} inscriptionMode={activeRecord.inscriptionMode} fontVersion={fontVersion} />
