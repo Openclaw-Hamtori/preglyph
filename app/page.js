@@ -749,7 +749,7 @@ export default function Page() {
                       onChange={(event) => setComposeInscriptionMode(event.target.checked ? UJONGSEO_INSCRIPTION_MODE : HORIZONTAL_INSCRIPTION_MODE)}
                     />
                     <span className="write-mode-box" aria-hidden="true" />
-                    <span className="write-mode-label">Ujongseo for 3D cube</span>
+                    <span className="write-mode-label">右縦書</span>
                   </label>
                   <textarea
                     value={composeText}
