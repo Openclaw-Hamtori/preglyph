@@ -20,6 +20,7 @@ contract PreglyphRegistry {
         uint256 id;
         address author;
         string content;
+        uint8 inscriptionMode;
         uint256 createdAt;
     }
 
@@ -31,6 +32,7 @@ contract PreglyphRegistry {
     mapping(bytes32 => bool) private usedWritePermits;
 
     event RecordWritten(uint256 indexed recordId, address indexed author, string content, uint256 createdAt);
+    event RecordWrittenV2(uint256 indexed recordId, address indexed author, string content, uint256 createdAt, uint8 inscriptionMode);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -62,6 +64,7 @@ contract PreglyphRegistry {
 
     function writeRecord(
         string calldata content,
+        uint8 inscriptionMode,
         uint256 expiresAt,
         bytes32 nonce,
         uint256 feeWei,
@@ -79,6 +82,7 @@ contract PreglyphRegistry {
                 block.chainid,
                 msg.sender,
                 keccak256(contentBytes),
+                inscriptionMode,
                 expiresAt,
                 nonce,
                 feeWei
@@ -101,10 +105,12 @@ contract PreglyphRegistry {
             id: recordId,
             author: msg.sender,
             content: content,
+            inscriptionMode: inscriptionMode,
             createdAt: createdAt
         });
 
         emit RecordWritten(recordId, msg.sender, content, createdAt);
+        emit RecordWrittenV2(recordId, msg.sender, content, createdAt, inscriptionMode);
     }
 
     function getRecord(uint256 recordId) external view returns (Record memory) {

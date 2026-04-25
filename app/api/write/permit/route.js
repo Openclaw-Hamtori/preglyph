@@ -4,6 +4,7 @@ import { Contract, isAddress } from 'ethers';
 import { NextResponse } from 'next/server';
 
 import { assertContractConfigured } from '@/lib/config';
+import { normalizeInscriptionMode } from '@/lib/inscription-mode.mjs';
 import { resolvePermitFeeQuote } from '@/lib/permit-fee-quote.mjs';
 import { getRateLimitKeyFromHeaders, createMemoryRateLimiter } from '@/lib/rate-limit.mjs';
 import { getSharedRpcProvider } from '@/lib/rpc-provider.mjs';
@@ -60,9 +61,10 @@ export async function POST(request) {
       );
     }
 
-    const { author, content, issuedAt, authSignature } = await request.json();
+    const { author, content, inscriptionMode, issuedAt, authSignature } = await request.json();
     const normalizedAuthor = String(author || '').trim();
     const normalizedContent = String(content || '');
+    const normalizedInscriptionMode = normalizeInscriptionMode(inscriptionMode);
     const normalizedIssuedAt = Number(issuedAt);
     const normalizedAuthSignature = String(authSignature || '').trim();
 
@@ -90,6 +92,7 @@ export async function POST(request) {
     const hasValidAuth = verifyWritePermitAuth({
       author: normalizedAuthor,
       content: normalizedContent,
+      inscriptionMode: normalizedInscriptionMode,
       chainId,
       contractAddress,
       issuedAt: normalizedIssuedAt,
@@ -130,6 +133,7 @@ export async function POST(request) {
       chainId,
       author: normalizedAuthor,
       content: normalizedContent,
+      inscriptionMode: normalizedInscriptionMode,
       expiresAt,
       nonce,
       feeWei: feeQuote.feeWei,
@@ -142,6 +146,7 @@ export async function POST(request) {
         nonce: permit.nonce,
         feeWei: permit.feeWei.toString(),
         feeUsdCents,
+        inscriptionMode: permit.inscriptionMode,
         signature: permit.signature,
       },
       quote: {

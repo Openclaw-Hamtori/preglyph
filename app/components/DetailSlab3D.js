@@ -6,9 +6,9 @@ import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { MATRIX_SIZE, createGlyphTexture } from './inscriptionTexture';
 
-function SlabMesh({ text, interacting = false, fontVersion = 0 }) {
-  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base'), [text, fontVersion]);
-  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow'), [text, fontVersion]);
+function SlabMesh({ text, inscriptionMode = 'horizontal', interacting = false, fontVersion = 0 }) {
+  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base', inscriptionMode), [text, inscriptionMode, fontVersion]);
+  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow', inscriptionMode), [text, inscriptionMode, fontVersion]);
   const materials = useMemo(
     () =>
       Array.from({ length: 6 }, () =>
@@ -42,7 +42,7 @@ function SlabMesh({ text, interacting = false, fontVersion = 0 }) {
   );
 }
 
-export default function DetailSlab3D({ text, fontVersion = 0 }) {
+export default function DetailSlab3D({ text, inscriptionMode = 'horizontal', fontVersion = 0 }) {
   const [interacting, setInteracting] = useState(false);
   const releaseTimerRef = useRef(null);
 
@@ -82,7 +82,7 @@ export default function DetailSlab3D({ text, fontVersion = 0 }) {
       <directionalLight position={[-2.2, -1.4, 3.2]} intensity={0.58} color="#aec1db" />
       <pointLight position={[0.2, 1.5, 4]} intensity={0.18} color="#dce8f7" />
 
-      <SlabMesh text={text} interacting={interacting} fontVersion={fontVersion} />
+      <SlabMesh text={text} inscriptionMode={inscriptionMode} interacting={interacting} fontVersion={fontVersion} />
 
       <OrbitControls
         enablePan={false}

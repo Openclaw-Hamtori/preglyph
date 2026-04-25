@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DetailSlab3D from './components/DetailSlab3D';
 import WriteLoadingHex3D from './components/WriteLoadingHex3D';
 import { MATRIX_SIZE, createInscriptionDataUrl } from './components/inscriptionTexture';
+import { HORIZONTAL_INSCRIPTION_MODE, UJONGSEO_INSCRIPTION_MODE } from '@/lib/inscription-mode.mjs';
 import PREGlyph_ABI from '@/lib/preglyphAbi.cjs';
 import { shouldShowArchiveLoading } from '@/lib/archive-state.mjs';
 import { getComposeLoadingHeadline, isUserRejectedComposeError, shouldShowComposeBanner, shouldShowComposeLoadingDetail } from '@/lib/compose-state.mjs';
@@ -92,6 +93,7 @@ export default function Page() {
   const [hasMoreRecords, setHasMoreRecords] = useState(false);
   const [totalRecordCount, setTotalRecordCount] = useState(0);
   const [composeText, setComposeText] = useState('');
+  const [composeInscriptionMode, setComposeInscriptionMode] = useState(HORIZONTAL_INSCRIPTION_MODE);
   const [composeState, setComposeState] = useState({ loading: false, message: '' });
   const [copiedTxHash, setCopiedTxHash] = useState('');
   const [fontVersion, setFontVersion] = useState(0);
@@ -402,6 +404,7 @@ export default function Page() {
 
   function handleCloseWriteFlow() {
     setComposeState({ loading: false, message: '' });
+    setComposeInscriptionMode(HORIZONTAL_INSCRIPTION_MODE);
     setActivePanel('');
   }
 
@@ -504,6 +507,7 @@ export default function Page() {
       const authSignature = await signer.signMessage(buildWritePermitAuthMessage({
         author: currentAddress,
         content,
+        inscriptionMode: composeInscriptionMode,
         chainId: CLIENT_CHAIN_ID,
         contractAddress: CLIENT_CONTRACT_ADDRESS,
         issuedAt,
@@ -515,7 +519,7 @@ export default function Page() {
       const permitResponse = await fetch('/api/write/permit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ author: currentAddress, content, issuedAt, authSignature }),
+        body: JSON.stringify({ author: currentAddress, content, inscriptionMode: composeInscriptionMode, issuedAt, authSignature }),
       });
       const permitPayload = await permitResponse.json();
       if (!permitResponse.ok || !permitPayload?.permit) {
@@ -530,6 +534,7 @@ export default function Page() {
       const feeEth = feeWei > 0n ? formatEther(feeWei) : '0';
       const tx = await contract.writeRecord(
         content,
+        composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE ? 1 : 0,
         BigInt(permitPayload.permit.expiresAt),
         permitPayload.permit.nonce,
         feeWei,
@@ -554,6 +559,7 @@ export default function Page() {
       } catch {}
 
       setComposeText('');
+      setComposeInscriptionMode(HORIZONTAL_INSCRIPTION_MODE);
       setSearchQuery('');
       setSearchResults(null);
       setActivePanel('');
@@ -723,7 +729,7 @@ export default function Page() {
               </div>
               {composeState.loading ? (
                 <section className="glass-subpanel write-loading-panel" aria-live="polite">
-                  <WriteLoadingHex3D text={composeText.trim() || ' '} fontVersion={fontVersion} />
+                  <WriteLoadingHex3D text={composeText.trim() || ' '} inscriptionMode={composeInscriptionMode} fontVersion={fontVersion} />
                   <h3>{composeLoadingHeadline}</h3>
                   {shouldShowComposeLoadingDetail(composeState) ? (
                     <p>{composeState.message || 'Finalizing your record onchain…'}</p>
@@ -734,6 +740,30 @@ export default function Page() {
                   <div className="write-preview-block">
                     <div className="write-preview-shell glass-subpanel">
                       <Inscription text={composeText.trim() || ' '} size={WRITE_PREVIEW_SIZE} variant="preview" fontVersion={fontVersion} />
+                    </div>
+                  </div>
+                  <div className="write-mode-picker glass-subpanel" aria-label="3D cube inscription layout">
+                    <div className="write-mode-copy">
+                      <p className="eyebrow">3D cube layout</p>
+                      <span>Plain text stays horizontal. Only the 3D cube render changes.</span>
+                    </div>
+                    <div className="write-mode-options" role="radiogroup" aria-label="3D cube layout options">
+                      <button
+                        type="button"
+                        className={`write-mode-option ${composeInscriptionMode === HORIZONTAL_INSCRIPTION_MODE ? 'active' : ''}`}
+                        aria-pressed={composeInscriptionMode === HORIZONTAL_INSCRIPTION_MODE}
+                        onClick={() => setComposeInscriptionMode(HORIZONTAL_INSCRIPTION_MODE)}
+                      >
+                        Horizontal
+                      </button>
+                      <button
+                        type="button"
+                        className={`write-mode-option ${composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE ? 'active' : ''}`}
+                        aria-pressed={composeInscriptionMode === UJONGSEO_INSCRIPTION_MODE}
+                        onClick={() => setComposeInscriptionMode(UJONGSEO_INSCRIPTION_MODE)}
+                      >
+                        Ujongseo
+                      </button>
                     </div>
                   </div>
                   <textarea
@@ -843,9 +873,13 @@ export default function Page() {
               <p className="eyebrow">Plain text</p>
               <strong className="detail-plain-value">{activeRecord.content}</strong>
             </div>
+            <div className="detail-copy glass-subpanel detail-render-mode">
+              <p className="eyebrow">3D cube layout</p>
+              <strong className="detail-plain-value">{activeRecord.inscriptionMode === UJONGSEO_INSCRIPTION_MODE ? 'Ujongseo' : 'Horizontal'}</strong>
+            </div>
             <div className="detail-body stacked-detail">
               <div className="detail-slab-wrap full-width detail-3d-stage">
-                <DetailSlab3D text={activeRecord.content} fontVersion={fontVersion} />
+                <DetailSlab3D text={activeRecord.content} inscriptionMode={activeRecord.inscriptionMode} fontVersion={fontVersion} />
               </div>
             </div>
           </div>

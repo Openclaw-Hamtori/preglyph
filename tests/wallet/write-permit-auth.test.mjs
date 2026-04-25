@@ -5,10 +5,11 @@ import { Wallet } from 'ethers';
 
 import { buildWritePermitAuthMessage, verifyWritePermitAuth } from '../../lib/write-permit-auth.mjs';
 
-test('buildWritePermitAuthMessage binds the request to contract, chain, author, and content hash', () => {
+test('buildWritePermitAuthMessage binds the request to contract, chain, author, mode, and content hash', () => {
   const message = buildWritePermitAuthMessage({
     author: '0x309e4687652E99dD34404281e7D4F2047639Bb53',
     content: 'hello preglyph',
+    inscriptionMode: 'ujongseo',
     chainId: 11155111,
     contractAddress: '0x3321077b39Bb1fBD1f9f342804af32BbF6B3b0fe',
     issuedAt: 1710000000,
@@ -19,6 +20,7 @@ test('buildWritePermitAuthMessage binds the request to contract, chain, author, 
   assert.match(message, /Chain ID: 11155111/);
   assert.match(message, /Contract: 0x3321077b39Bb1fBD1f9f342804af32BbF6B3b0fe/);
   assert.match(message, /Issued at: 1710000000/);
+  assert.match(message, /3D inscription mode: ujongseo/i);
   assert.match(message, /Content hash: 0x[0-9a-f]{64}/i);
   assert.ok(!message.includes('hello preglyph'));
 });

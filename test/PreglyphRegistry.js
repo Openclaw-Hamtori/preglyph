@@ -2,10 +2,10 @@ const { expect } = require('chai');
 const { anyValue } = require('@nomicfoundation/hardhat-chai-matchers/withArgs');
 const { ethers } = require('hardhat');
 
-function buildPermitPayload({ contractAddress, chainId, author, content, expiresAt, nonce, feeWei = 0n }) {
+function buildPermitPayload({ contractAddress, chainId, author, content, inscriptionMode = 0, expiresAt, nonce, feeWei = 0n }) {
   return ethers.solidityPackedKeccak256(
-    ['address', 'uint256', 'address', 'bytes32', 'uint256', 'bytes32', 'uint256'],
-    [contractAddress, chainId, author, ethers.keccak256(ethers.toUtf8Bytes(content)), expiresAt, nonce, feeWei],
+    ['address', 'uint256', 'address', 'bytes32', 'uint8', 'uint256', 'bytes32', 'uint256'],
+    [contractAddress, chainId, author, ethers.keccak256(ethers.toUtf8Bytes(content)), inscriptionMode, expiresAt, nonce, feeWei],
   );
 }
 
@@ -19,12 +19,13 @@ describe('PreglyphRegistry', function () {
     return { contract, permitSigner, treasury, writer, other, chainId: Number(network.chainId) };
   }
 
-  async function signPermit({ contract, permitSigner, chainId, author, content, expiresAt, nonce, feeWei = 0n }) {
+  async function signPermit({ contract, permitSigner, chainId, author, content, inscriptionMode = 0, expiresAt, nonce, feeWei = 0n }) {
     const digest = buildPermitPayload({
       contractAddress: await contract.getAddress(),
       chainId,
       author,
       content,
+      inscriptionMode,
       expiresAt,
       nonce,
       feeWei,
@@ -37,6 +38,7 @@ describe('PreglyphRegistry', function () {
   it('stores a record for a writer with a valid Preglyph permit and forwards the fee to treasury', async function () {
     const { contract, permitSigner, treasury, writer, chainId } = await deployFixture();
     const content = 'Preglyph test record';
+    const inscriptionMode = 1;
     const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
     const nonce = ethers.randomBytes(32);
     const feeWei = 500000000000000n;
@@ -46,21 +48,45 @@ describe('PreglyphRegistry', function () {
       chainId,
       author: writer.address,
       content,
+      inscriptionMode,
       expiresAt,
       nonce,
       feeWei,
     });
 
     const treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);
-    const tx = await contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: feeWei });
-    await expect(tx).to.emit(contract, 'RecordWritten').withArgs(1n, writer.address, content, anyValue);
+    const tx = await contract.connect(writer).writeRecord(content, inscriptionMode, expiresAt, nonce, feeWei, signature, { value: feeWei });
+    await expect(tx).to.emit(contract, 'RecordWrittenV2').withArgs(1n, writer.address, content, anyValue, inscriptionMode);
 
     const record = await contract.getRecord(1);
     expect(record.id).to.equal(1n);
     expect(record.author).to.equal(writer.address);
     expect(record.content).to.equal(content);
+    expect(record.inscriptionMode).to.equal(1n);
     expect(await contract.recordCount()).to.equal(1n);
     expect(await ethers.provider.getBalance(treasury.address)).to.equal(treasuryBalanceBefore + feeWei);
+  });
+
+  it('rejects writes when the signed inscription mode does not match the submitted mode', async function () {
+    const { contract, permitSigner, writer, chainId } = await deployFixture();
+    const content = 'writer one';
+    const expiresAt = BigInt(Math.floor(Date.now() / 1000) + 300);
+    const nonce = ethers.randomBytes(32);
+    const feeWei = 500000000000000n;
+    const { signature } = await signPermit({
+      contract,
+      permitSigner,
+      chainId,
+      author: writer.address,
+      content,
+      inscriptionMode: 0,
+      expiresAt,
+      nonce,
+      feeWei,
+    });
+
+    await expect(contract.connect(writer).writeRecord(content, 1, expiresAt, nonce, feeWei, signature, { value: feeWei }))
+      .to.be.revertedWithCustomError(contract, 'InvalidWritePermit');
   });
 
   it('rejects writes without a valid Preglyph permit signer', async function () {
@@ -80,7 +106,7 @@ describe('PreglyphRegistry', function () {
       feeWei,
     });
 
-    await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'InvalidWritePermit');
+    await expect(contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'InvalidWritePermit');
   });
 
   it('rejects replayed permits', async function () {
@@ -100,8 +126,8 @@ describe('PreglyphRegistry', function () {
       feeWei,
     });
 
-    await contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: feeWei });
-    await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'WritePermitAlreadyUsed');
+    await contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, feeWei, signature, { value: feeWei });
+    await expect(contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'WritePermitAlreadyUsed');
   });
 
   it('rejects expired permits', async function () {
@@ -122,7 +148,7 @@ describe('PreglyphRegistry', function () {
       feeWei,
     });
 
-    await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'ExpiredWritePermit');
+    await expect(contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, feeWei, signature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'ExpiredWritePermit');
   });
 
   it('uses a byte cap that still allows 100 Korean characters while rejecting oversized payloads', async function () {
@@ -144,7 +170,7 @@ describe('PreglyphRegistry', function () {
       feeWei,
     })).signature;
 
-    await expect(contract.connect(writer).writeRecord(validContent, validExpiresAt, validNonce, feeWei, validSignature, { value: feeWei }))
+    await expect(contract.connect(writer).writeRecord(validContent, 0, validExpiresAt, validNonce, feeWei, validSignature, { value: feeWei }))
       .to.emit(contract, 'RecordWritten')
       .withArgs(1n, writer.address, validContent, anyValue);
 
@@ -175,8 +201,8 @@ describe('PreglyphRegistry', function () {
       feeWei,
     })).signature;
 
-    await expect(contract.connect(writer).writeRecord('', emptyExpiresAt, emptyNonce, feeWei, emptySignature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'EmptyContent');
-    await expect(contract.connect(writer).writeRecord(longContent, longExpiresAt, longNonce, feeWei, longSignature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'ContentTooLong');
+    await expect(contract.connect(writer).writeRecord('', 0, emptyExpiresAt, emptyNonce, feeWei, emptySignature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'EmptyContent');
+    await expect(contract.connect(writer).writeRecord(longContent, 0, longExpiresAt, longNonce, feeWei, longSignature, { value: feeWei })).to.be.revertedWithCustomError(contract, 'ContentTooLong');
   });
 
   it('rejects writes when msg.value does not match the permit fee', async function () {
@@ -196,7 +222,7 @@ describe('PreglyphRegistry', function () {
       feeWei,
     });
 
-    await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, feeWei, signature, { value: 0n }))
+    await expect(contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, feeWei, signature, { value: 0n }))
       .to.be.revertedWithCustomError(contract, 'IncorrectWriteFee');
   });
 
@@ -218,7 +244,7 @@ describe('PreglyphRegistry', function () {
       feeWei: signedFeeWei,
     });
 
-    await expect(contract.connect(writer).writeRecord(content, expiresAt, nonce, submittedFeeWei, signature, { value: submittedFeeWei }))
+    await expect(contract.connect(writer).writeRecord(content, 0, expiresAt, nonce, submittedFeeWei, signature, { value: submittedFeeWei }))
       .to.be.revertedWithCustomError(contract, 'InvalidWritePermit');
   });
 

@@ -1,10 +1,10 @@
 const { Contract, Interface, JsonRpcProvider, NonceManager, Wallet, ethers, parseEther, randomBytes, solidityPackedKeccak256, toUtf8Bytes } = require('ethers');
 const PREGlyph_ABI = require('../lib/preglyphAbi.cjs');
 
-function buildPermitDigest({ contractAddress, chainId, author, content, expiresAt, nonce, feeWei }) {
+function buildPermitDigest({ contractAddress, chainId, author, content, inscriptionMode = 0, expiresAt, nonce, feeWei }) {
   return solidityPackedKeccak256(
-    ['address', 'uint256', 'address', 'bytes32', 'uint256', 'bytes32', 'uint256'],
-    [contractAddress, chainId, author, ethers.keccak256(toUtf8Bytes(content)), expiresAt, nonce, feeWei],
+    ['address', 'uint256', 'address', 'bytes32', 'uint8', 'uint256', 'bytes32', 'uint256'],
+    [contractAddress, chainId, author, ethers.keccak256(toUtf8Bytes(content)), inscriptionMode, expiresAt, nonce, feeWei],
   );
 }
 
@@ -30,10 +30,10 @@ async function main() {
   const expiresAt = Math.floor(Date.now() / 1000) + 300;
   const nonce = `0x${Buffer.from(randomBytes(32)).toString('hex')}`;
   const feeWei = BigInt(feeOverrideWei);
-  const digest = buildPermitDigest({ contractAddress, chainId, author: userWallet.address, content, expiresAt, nonce, feeWei });
+  const digest = buildPermitDigest({ contractAddress, chainId, author: userWallet.address, content, inscriptionMode: 0, expiresAt, nonce, feeWei });
   const signature = await adminWallet.signMessage(ethers.getBytes(digest));
 
-  const writeTx = await userContract.writeRecord(content, BigInt(expiresAt), nonce, feeWei, signature, { value: feeWei });
+  const writeTx = await userContract.writeRecord(content, 0, BigInt(expiresAt), nonce, feeWei, signature, { value: feeWei });
   const receipt = await writeTx.wait();
 
   const iface = new Interface(PREGlyph_ABI);

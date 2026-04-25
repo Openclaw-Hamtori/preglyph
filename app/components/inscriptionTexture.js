@@ -2,6 +2,8 @@
 
 import * as THREE from 'three';
 
+import { getInscriptionGridCells } from '@/lib/inscription-mode.mjs';
+
 export const MATRIX_SIZE = 10;
 export const INSCRIPTION_FONT_STACK = [
   '"Noto Sans KR"',
@@ -27,6 +29,14 @@ export function buildMatrix(text, size = MATRIX_SIZE) {
   return [...cleaned, ...Array(size * size - cleaned.length).fill(' ')];
 }
 
+function buildRenderCells(text, size, inscriptionMode) {
+  return getInscriptionGridCells(text, {
+    size,
+    cells: buildMatrix(text, size),
+    mode: inscriptionMode,
+  });
+}
+
 function createCanvas(size = 1200) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -34,7 +44,7 @@ function createCanvas(size = 1200) {
   return canvas;
 }
 
-function drawBaseMatrix(ctx, text, size) {
+function drawBaseMatrix(ctx, text, size, inscriptionMode = 'horizontal') {
   const { canvas } = ctx;
   const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
   bgGradient.addColorStop(0, '#42556f');
@@ -43,7 +53,7 @@ function drawBaseMatrix(ctx, text, size) {
   ctx.fillStyle = bgGradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const cells = buildMatrix(text, size);
+  const cells = buildRenderCells(text, size, inscriptionMode);
   const inset = canvas.width * 0.1;
   const cellSize = (canvas.width - inset * 2) / size;
   const dotRadius = Math.max(2.6, cellSize * 0.055);
@@ -71,12 +81,12 @@ function drawBaseMatrix(ctx, text, size) {
   }
 }
 
-function drawGlowMatrix(ctx, text, size) {
+function drawGlowMatrix(ctx, text, size, inscriptionMode = 'horizontal') {
   const { canvas } = ctx;
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const cells = buildMatrix(text, size);
+  const cells = buildRenderCells(text, size, inscriptionMode);
   const inset = canvas.width * 0.1;
   const cellSize = (canvas.width - inset * 2) / size;
   const dotRadius = Math.max(2.6, cellSize * 0.055);
@@ -181,14 +191,14 @@ export function createInscriptionDataUrl(text, size = MATRIX_SIZE, mode = 'base'
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-export function createGlyphTexture(text, size = MATRIX_SIZE, mode = 'base') {
+export function createGlyphTexture(text, size = MATRIX_SIZE, mode = 'base', inscriptionMode = 'horizontal') {
   const canvas = createCanvas(1400);
   const ctx = canvas.getContext('2d');
 
   if (mode === 'glow') {
-    drawGlowMatrix(ctx, text, size);
+    drawGlowMatrix(ctx, text, size, inscriptionMode);
   } else {
-    drawBaseMatrix(ctx, text, size);
+    drawBaseMatrix(ctx, text, size, inscriptionMode);
   }
 
   const texture = new THREE.CanvasTexture(canvas);

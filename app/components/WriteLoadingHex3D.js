@@ -5,10 +5,10 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { MATRIX_SIZE, createGlyphTexture } from './inscriptionTexture';
 
-function LoadingSlabMesh({ text, fontVersion = 0 }) {
+function LoadingSlabMesh({ text, inscriptionMode = 'horizontal', fontVersion = 0 }) {
   const groupRef = useRef(null);
-  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base'), [text, fontVersion]);
-  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow'), [text, fontVersion]);
+  const glyphTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'base', inscriptionMode), [text, inscriptionMode, fontVersion]);
+  const glowTexture = useMemo(() => createGlyphTexture(text, MATRIX_SIZE, 'glow', inscriptionMode), [text, inscriptionMode, fontVersion]);
   const materials = useMemo(
     () =>
       Array.from({ length: 6 }, () =>
@@ -50,7 +50,7 @@ function LoadingSlabMesh({ text, fontVersion = 0 }) {
   );
 }
 
-export default function WriteLoadingHex3D({ text = ' ', fontVersion = 0 }) {
+export default function WriteLoadingHex3D({ text = ' ', inscriptionMode = 'horizontal', fontVersion = 0 }) {
   return (
     <div className="write-loading-3d-stage" aria-hidden="true">
       <Canvas className="write-loading-3d-canvas" dpr={[1, 1.75]} camera={{ position: [0, 0, 7.1], fov: 22 }} gl={{ antialias: true, alpha: true }}>
@@ -58,7 +58,7 @@ export default function WriteLoadingHex3D({ text = ' ', fontVersion = 0 }) {
         <directionalLight position={[2.8, 3.2, 5.4]} intensity={1.4} color="#f3f7fd" />
         <directionalLight position={[-2.2, -1.4, 3.2]} intensity={0.58} color="#aec1db" />
         <pointLight position={[0.2, 1.5, 4]} intensity={0.18} color="#dce8f7" />
-        <LoadingSlabMesh text={text} fontVersion={fontVersion} />
+        <LoadingSlabMesh text={text} inscriptionMode={inscriptionMode} fontVersion={fontVersion} />
       </Canvas>
     </div>
   );
